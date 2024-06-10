@@ -1,0 +1,14 @@
+#strict=FALSE
+#fail_on_unexpected_newline
+---
+command: echo "hello"
+stdout: |
+error processing file:
+    something bad happened
+        |
+return: 0
+---
+command: do
+return: 1
+stdout: hello
+---
