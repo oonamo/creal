@@ -24,7 +24,6 @@ void destory_creal(Creal *creal, int can_destroy_self)
 {
     if (creal == NULL)
         return;
-    /* printf("output? %s\n", creal->output[0]); */
     for (size_t i = 0; i < creal->lines; i++)
         if (creal->output[i] != NULL)
             free(creal->output[i]);
@@ -59,7 +58,7 @@ void add_line(Creal *creal, const char *line)
 /// 2. Flags: Delimited with '#'s
 /// 3. Runner Seperators: seperated with '--'
 /// 3. Actions
-Creal *read_testfile(Creal *input, const char *input_file, size_t *count)
+Creal *read_testfile(const char *input_file, size_t *count)
 {
     // get flags
     char buffer[1024];
@@ -80,7 +79,6 @@ Creal *read_testfile(Creal *input, const char *input_file, size_t *count)
     size_t runner_count = 0;
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
-        printf("next\n");
         char *copy = strdup(buffer);
         char *trimmed_buf = trim(copy);
         size_t first_char = first_non_empty_char(buffer);
@@ -92,7 +90,6 @@ Creal *read_testfile(Creal *input, const char *input_file, size_t *count)
                 is_stdout = 0;
                 continue;
             }
-            add_line(input, buffer);
             add_line(&inputs[runner_count - 1], buffer);
             continue;
         }
@@ -114,6 +111,13 @@ Creal *read_testfile(Creal *input, const char *input_file, size_t *count)
                 fprintf(stderr, "failed to allocate memory\n");
                 exit(EXIT_FAILURE);
             }
+            if (runner_count - 1 < 0)
+            {
+                fprintf(
+                    stderr,
+                    "please use '---' in a new line to create a new runner");
+                exit(EXIT_FAILURE);
+            }
             inputs[runner_count - 1].output = NULL;
             inputs[runner_count - 1].command = NULL;
             inputs[runner_count - 1].returncode = 0;
@@ -126,25 +130,31 @@ Creal *read_testfile(Creal *input, const char *input_file, size_t *count)
             {
                 fprintf(stderr, "set flags before creating runner");
             }
-            printf("is flag\n");
+            /* printf("is flag\n"); */
             set_flags = 1;
             char *flag = trim(&buffer[first_char + 1]);
-            printf("flag: %s\n", flag);
+            /* printf("flag: %s\n", flag); */
             size_t val_idx = index_of_char(flag, '=');
             char *value;
             value = strchr(flag, '=');
             if (value == NULL)
             {
-                printf("use default value\n");
+                /* printf("use default value\n"); */
                 continue;
             }
             value = &value[1];
-            printf("value: %s\n", value);
+            /* printf("value: %s\n", value); */
             continue;
         }
         else if (action_idx != -1)
         {
-            printf("is action\n");
+            if (runner_count - 1 < 0)
+            {
+                fprintf(
+                    stderr,
+                    "please use '---' in a new line to create a new runner");
+                exit(EXIT_FAILURE);
+            }
             char *action = copy_sub_str(buffer, ':');
             const char *untrimmed = copy_sub_str_offset(buffer, action_idx + 1);
             size_t value_idx = first_non_empty_char(untrimmed);
@@ -157,18 +167,15 @@ Creal *read_testfile(Creal *input, const char *input_file, size_t *count)
                     is_stdout = 1;
                     continue;
                 }
-                add_line(input, trimmed_value);
                 add_line(&inputs[runner_count - 1], trimmed_value);
             }
             else if (strcmp(action, "command") == 0)
             {
-                input->command = (char *)trimmed_value;
                 inputs[runner_count - 1].command = (char *)trimmed_value;
             }
             else if (strcmp(action, "returncode") == 0)
             {
-                input->returncode = atoi(action);
-                input[runner_count - 1].returncode = atoi(action);
+                inputs[runner_count - 1].returncode = atoi(trimmed_value);
             }
         }
     }
@@ -177,32 +184,43 @@ Creal *read_testfile(Creal *input, const char *input_file, size_t *count)
     return inputs;
 }
 
-void execute_command(Creal *creal, char *cmd)
+void append_std_err_redir(char *cmd)
 {
-    FILE *file;
+    size_t len = strlen(cmd);
+    const char *str = copy_sub_str_offset(cmd, len - 4);
+    if (strcmp(str, "2>&1"))
+        strcat(cmd, " 2>&1");
+}
+
+void execute_command(Creal *creal)
+{
+    FILE *fp;
     char buffer[1024];
     size_t line = 0;
+    append_std_err_redir(creal->command);
 #ifdef _WIN32
-    file = _popen(cmd, "r");
+    fp = _popen(creal->command, "rb"); // redirect to stderr
 #else
     fp = popen(cmd, "r");
 #endif
-    if (file == NULL)
+    if (fp == NULL)
     {
-        fprintf(stderr, "failed to run command %s\n", cmd);
+        fprintf(stderr, "failed to run command %s\n", creal->command);
         exit(EXIT_FAILURE);
     }
 
+    /* printf("executing command %s\n", creal->command); */
+
     // read line_wise
-    while (fgets(buffer, sizeof(buffer), file) != NULL)
+    while (fgets(buffer, sizeof(buffer), fp) != NULL)
     {
         add_line(creal, buffer);
     }
 
 #ifdef _WIN32
-    creal->returncode = _pclose(file);
+    creal->returncode = _pclose(fp);
 #else
-    creal->returncode = pclose(fp);
+    creal->returncode = pclose(file);
 #endif
     return;
 }
@@ -220,6 +238,56 @@ void print_creal(Creal *creal)
     printf("\n");
 }
 
+void compare_creals(const Creal *actual, const Creal *expected)
+{
+    int is_match = 0;
+    printf("expected stdout:\n");
+    for (size_t i = 0; i < expected->lines; i++)
+        printf("%s", expected->output[i]);
+    printf("\n");
+    printf("attempting to print actual stdout:\n");
+    for (size_t i = 0; i < actual->lines; i++)
+        printf("%s", actual->output[i]);
+    printf("\n");
+    if (actual->command != expected->command)
+    {
+        fprintf(stderr, "unexpected behavior occured\n");
+        printf("expected:\n");
+        printf("\t%s\n", expected->command);
+        printf("actual:\n");
+        printf("\t%s\n", actual->command);
+        is_match++;
+    }
+    if (actual->returncode != expected->returncode)
+    {
+        fprintf(stderr, "return codes are diffrent\n");
+        printf("expected:\n");
+        printf("\t%d\n", expected->returncode);
+        printf("actual:\n");
+        printf("\t%d\n", actual->returncode);
+        is_match++;
+    }
+    if (actual->lines != expected->lines)
+    {
+        fprintf(stderr,
+                "the two have diffrent amount of lines printed to stdout\n");
+        fprintf(stderr, "return codes are diffrent\n");
+        printf("expected:\n");
+        printf("\t%zu\n", expected->lines);
+        printf("actual:\n");
+        printf("\t%zu\n", actual->lines);
+        is_match++;
+    }
+    if (is_match != 0)
+    {
+        printf("assertions failed\n");
+    }
+    else
+    {
+        printf("assertion pasesd\n");
+    }
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -227,20 +295,21 @@ int main(int argc, char *argv[])
         printf("USAGE: creal <file>\n");
     }
     const char *test_file = argv[1];
-    Creal *expected = init_creal();
-    Creal *actual = init_creal();
     size_t runner_count = 0;
-    Creal *runners = read_testfile(expected, test_file, &runner_count);
-    printf("finished reading file...\n");
-    printf("runner_count: %zu\n", runner_count);
+    Creal *runners = read_testfile(test_file, &runner_count);
     for (size_t i = 0; i < runner_count; i++)
-        print_creal(&runners[i]);
-    printf("printed all creals\n");
+    {
+        Creal *test = &runners[i];
+        Creal *actual = init_creal();
+        actual->command = test->command;
+        /* actual->command = "echo test"; */
+        execute_command(actual);
+        compare_creals(actual, test);
+        destory_creal(actual, 1);
+    }
+    printf("tested all creals\n");
     for (size_t i = 0; i < runner_count; i++)
         destory_creal(&runners[i], 0);
-    print_creal(expected);
-    destory_creal(expected, 1);
-    destory_creal(actual, 1);
     printf("done...\n");
     return 0;
 }

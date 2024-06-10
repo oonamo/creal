@@ -12,9 +12,11 @@ typedef struct
 Creal *init_creal();
 void destory_creal(Creal *creal, int can_destroy_self);
 void read_command();
-void execute_command(Creal *ouput, char *cmd);
+void execute_command(Creal *ouput);
 void add_line(Creal *creal, const char *line);
 void print_creal(Creal *creal);
 
-Creal *read_testfile(Creal *input, const char *input_file, size_t *count);
+void comapre_creals(const Creal *actual, const Creal *expected);
+
+Creal *read_testfile(const char *input_file, size_t *count);
 #endif
