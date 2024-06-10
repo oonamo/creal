@@ -1,8 +1,14 @@
 #include <stdio.h>
+#include <string.h>
 
 int main()
 {
-    int boolean = 1;
-    unsigned char a = 1;
-    printf("true | ( 1 << 1): %d", (a << 1));
+    if (strcmp("hello", "hello") != 0)
+    {
+        printf("strings are not equal");
+    }
+    else
+    {
+        printf("strings are equal");
+    }
 }
