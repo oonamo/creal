@@ -48,6 +48,13 @@ void add_line(Creal *creal, const char *line)
     creal->lines++;
 }
 
+/// read line by line
+/// Priority List:
+/// 1. multiline stdout: Everything is stored into array. No other process is
+/// ran until the multiline stdout is done. Delimited with 'stdout: |". To end,
+/// add '|' to a line with nothing else
+/// 2. Flags: Delimited with '#'s
+/// 3. Actions
 void read_testfile(Creal *input, const char *input_file)
 {
     // get flags
