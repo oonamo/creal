@@ -6,7 +6,7 @@
 
 #define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT)
 
-/* static uint32_t flags = DEFAULT_FLAGS; */
+static uint32_t flags = DEFAULT_FLAGS;
 
 void read_command() {}
 Creal *init_creal()
@@ -36,7 +36,7 @@ void destory_creal(Creal *creal, int can_destroy_self)
         free(creal);
 }
 
-void add_line(Creal *creal, const char *line, uint32_t flags)
+void add_line(Creal *creal, const char *line)
 {
     // increase size by 1
     creal->output = realloc(creal->output, (creal->lines + 1) * sizeof(char *));
@@ -57,7 +57,7 @@ void add_line(Creal *creal, const char *line, uint32_t flags)
     creal->lines++;
 }
 
-void compare_creals(const Creal *actual, const Creal *expected, uint32_t flags)
+void compare_creals(const Creal *actual, const Creal *expected)
 {
     int failed = 0, is_match = 0;
     if (flags & FAIL_UNEXPECTED_NEWLINES)
@@ -175,7 +175,7 @@ void compare_creals(const Creal *actual, const Creal *expected, uint32_t flags)
 /// 2. Flags: Delimited with '#'s
 /// 3. Runner Seperators: seperated with '--'
 /// 3. Actions
-Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
+Creal *read_testfile(const char *input_file, size_t *count)
 {
     // get flags
     char buffer[1024];
@@ -212,7 +212,7 @@ Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
                 is_stdout = 0;
                 continue;
             }
-            add_line(&inputs[runner_count - 1], buffer, *flags);
+            add_line(&inputs[runner_count - 1], buffer);
             continue;
         }
         else if (first_char == -1)
@@ -222,7 +222,7 @@ Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
         else if (strcmp(trimmed_buf, "---") == 0)
         {
             set_flags = 1;
-            if (*flags & STRICT)
+            if (flags & STRICT)
             {
             }
 
@@ -249,8 +249,8 @@ Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
             Creal *test = &inputs[runner_count - 1];
             Creal *actual = init_creal();
             actual->command = test->command;
-            execute_command(actual, *flags);
-            compare_creals(actual, test, *flags);
+            execute_command(actual);
+            compare_creals(actual, test);
             destory_creal(actual, 0);
 
             runner_count++;
@@ -275,11 +275,11 @@ Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
             {
                 if (strcmp(value, "true") == 0)
                 {
-                    *flags |= FAIL_UNEXPECTED_NEWLINES;
+                    flags |= FAIL_UNEXPECTED_NEWLINES;
                 }
                 else if (strcmp(value, "false") == 0)
                 {
-                    *flags &= ~(FAIL_UNEXPECTED_NEWLINES);
+                    flags &= ~(FAIL_UNEXPECTED_NEWLINES);
                 }
                 continue;
             }
@@ -287,11 +287,11 @@ Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
             {
                 if (strcmp(value, "true") == 0)
                 {
-                    *flags |= STRICT;
+                    flags |= STRICT;
                 }
                 else if (strcmp(value, "false") == 0)
                 {
-                    *flags &= ~(STRICT);
+                    flags &= ~(STRICT);
                 }
                 continue;
             }
@@ -299,11 +299,11 @@ Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
             {
                 if (strcmp(value, "true") == 0)
                 {
-                    *flags |= STRICT;
+                    flags |= STRICT;
                 }
                 else if (strcmp(value, "false") == 0)
                 {
-                    *flags &= ~(STRICT);
+                    flags &= ~(STRICT);
                 }
             }
             continue;
@@ -329,7 +329,7 @@ Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
                     is_stdout = 1;
                     continue;
                 }
-                add_line(&inputs[runner_count - 1], trimmed_value, *flags);
+                add_line(&inputs[runner_count - 1], trimmed_value);
             }
             else if (strcmp(action, "command") == 0)
             {
@@ -346,8 +346,8 @@ Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
     Creal *test = &inputs[runner_count - 1];
     Creal *actual = init_creal();
     actual->command = test->command;
-    execute_command(actual, *flags);
-    compare_creals(actual, test, *flags);
+    execute_command(actual);
+    compare_creals(actual, test);
     destory_creal(actual, 0);
     fclose(file);
     *count = (size_t)runner_count;
@@ -362,7 +362,7 @@ void append_std_err_redir(char *cmd)
         strcat(cmd, " 2>&1");
 }
 
-void execute_command(Creal *creal, uint32_t flags)
+void execute_command(Creal *creal)
 {
     FILE *fp;
     char buffer[1024];
@@ -382,7 +382,7 @@ void execute_command(Creal *creal, uint32_t flags)
     // read line_wise
     while (fgets(buffer, sizeof(buffer), fp) != NULL)
     {
-        add_line(creal, buffer, flags);
+        add_line(creal, buffer);
     }
 
 #ifdef _WIN32
@@ -415,8 +415,7 @@ int main(int argc, char *argv[])
     }
     const char *test_file = argv[1];
     size_t runner_count = 0;
-    uint32_t flags = DEFAULT_FLAGS;
-    Creal *runners = read_testfile(test_file, &runner_count, &flags);
+    Creal *runners = read_testfile(test_file, &runner_count);
     print_c(GREEN, "tested all creals\n");
     for (size_t i = 0; i < runner_count; i++)
         destory_creal(&runners[i], 0);

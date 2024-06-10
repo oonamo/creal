@@ -20,11 +20,11 @@ typedef enum
 
 Creal *init_creal();
 void destory_creal(Creal *creal, int can_destroy_self);
-void add_line(Creal *creal, const char *line, uint32_t flags);
-void comapre_creals(const Creal *actual, const Creal *expected, uint32_t flags);
-Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags);
+void add_line(Creal *creal, const char *line);
+void comapre_creals(const Creal *actual, const Creal *expected);
+Creal *read_testfile(const char *input_file, size_t *count);
 void append_std_err_redir(char *cmd);
-void execute_command(Creal *ouput, uint32_t flags);
+void execute_command(Creal *ouput);
 void print_creal(Creal *creal);
 
 #endif
