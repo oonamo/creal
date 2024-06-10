@@ -165,10 +165,6 @@ Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
                 }
                 continue;
             }
-            if (flag == NULL)
-            {
-                continue;
-            }
             continue;
         }
         else if (action_idx != -1)
@@ -213,7 +209,7 @@ void append_std_err_redir(char *cmd)
 {
     size_t len = strlen(cmd);
     const char *str = copy_sub_str_offset(cmd, len - 4);
-    if (strcmp(str, "2>&1"))
+    if (strcmp(str, "2>&1") != 0)
         strcat(cmd, " 2>&1");
 }
 
