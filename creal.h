@@ -24,7 +24,7 @@ void execute_command(Creal *ouput);
 void add_line(Creal *creal, const char *line);
 void print_creal(Creal *creal);
 
-void comapre_creals(const Creal *actual, const Creal *expected);
+void comapre_creals(const Creal *actual, const Creal *expected, uint32_t flags);
 
 Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags);
 #endif

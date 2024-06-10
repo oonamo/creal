@@ -1,0 +1,5 @@
+#strict=true
+---
+command: echo hello
+returncode: 0
+stdout: hello

@@ -35,7 +35,7 @@ char *copy_sub_str(const char *source, char delimiter)
     char *dest = (char *)malloc((idx + 1) * sizeof(char));
     if (dest == NULL)
     {
-        printf("failed to allocate memory\n");
+        fprintf(stderr, "failed to allocate memory\n");
         exit(EXIT_FAILURE);
     }
     strncpy(dest, source, idx);
@@ -77,4 +77,11 @@ void print_bits(uint32_t bits)
         uint8_t bit = (bits & mask) >> i;
         printf("%u", bit);
     }
+}
+
+char *str_tolower(char *str)
+{
+    for (char *p = str; *p; p++)
+        *p = tolower(*p);
+    return str;
 }
