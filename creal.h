@@ -10,11 +10,11 @@ typedef struct
 } Creal;
 
 Creal *init_creal();
-void destory_creal(Creal *creal);
+void destory_creal(Creal *creal, int can_destroy_self);
 void read_command();
 void execute_command(Creal *ouput, char *cmd);
 void add_line(Creal *creal, const char *line);
 void print_creal(Creal *creal);
 
-void read_testfile(Creal *input, const char *input_file);
+Creal *read_testfile(Creal *input, const char *input_file, size_t *count);
 #endif

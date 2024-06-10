@@ -20,14 +20,17 @@ Creal *init_creal()
     return c;
 }
 
-void destory_creal(Creal *creal)
+void destory_creal(Creal *creal, int can_destroy_self)
 {
     if (creal == NULL)
         return;
+    /* printf("output? %s\n", creal->output[0]); */
     for (size_t i = 0; i < creal->lines; i++)
-        free(creal->output[i]);
+        if (creal->output[i] != NULL)
+            free(creal->output[i]);
     free(creal->output);
-    free(creal);
+    if (can_destroy_self)
+        free(creal);
 }
 
 void add_line(Creal *creal, const char *line)
@@ -36,13 +39,13 @@ void add_line(Creal *creal, const char *line)
     creal->output = realloc(creal->output, (creal->lines + 1) * sizeof(char *));
     if (creal->output == NULL)
     {
-        fprintf(stderr, "Failed to allocate memory\n");
+        fprintf(stderr, "Failed to allocate memory in output\n");
         exit(1);
     }
     creal->output[creal->lines] = _strdup(line);
     if (creal->output[creal->lines] == NULL)
     {
-        fprintf(stderr, "Failed to allocate memory\n");
+        fprintf(stderr, "Failed to allocate memory in lines\n");
         exit(1);
     }
     creal->lines++;
@@ -54,12 +57,14 @@ void add_line(Creal *creal, const char *line)
 /// ran until the multiline stdout is done. Delimited with 'stdout: |". To end,
 /// add '|' to a line with nothing else
 /// 2. Flags: Delimited with '#'s
+/// 3. Runner Seperators: seperated with '--'
 /// 3. Actions
-void read_testfile(Creal *input, const char *input_file)
+Creal *read_testfile(Creal *input, const char *input_file, size_t *count)
 {
     // get flags
     char buffer[1024];
     FILE *file;
+    Creal *inputs;
 #ifdef _WIN32
     fopen_s(&file, input_file, "r");
 #else
@@ -75,31 +80,53 @@ void read_testfile(Creal *input, const char *input_file)
     size_t runner_count = 0;
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
+        printf("next\n");
         char *copy = strdup(buffer);
+        char *trimmed_buf = trim(copy);
+        size_t first_char = first_non_empty_char(buffer);
+        size_t action_idx = index_of_char(buffer, ':');
         if (is_stdout)
         {
-            char *copy = strdup(buffer);
-            const char *trimmed_value = trim(copy);
-            if (strcmp(trimmed_value, "|") == 0)
-            {
-                is_stdout = 0;
-                continue;
-            }
-            else if (strcmp(trimmed_value, "--") == 0)
+            if (strcmp(trimmed_buf, "|") == 0)
             {
                 is_stdout = 0;
                 continue;
             }
             add_line(input, buffer);
+            add_line(&inputs[runner_count - 1], buffer);
             continue;
         }
-        size_t first_char = first_non_empty_char(buffer);
-        if (first_char == -1)
+        else if (first_char == -1)
         {
             continue;
         }
-        if (buffer[first_char] == '#')
+        else if (strcmp(trimmed_buf, "---") == 0)
         {
+            runner_count++;
+            if (runner_count == 1)
+            {
+                inputs = malloc(sizeof(Creal));
+            }
+            else
+                inputs = realloc(inputs, runner_count * sizeof(Creal));
+            if (inputs == NULL)
+            {
+                fprintf(stderr, "failed to allocate memory\n");
+                exit(EXIT_FAILURE);
+            }
+            inputs[runner_count - 1].output = NULL;
+            inputs[runner_count - 1].command = NULL;
+            inputs[runner_count - 1].returncode = 0;
+            inputs[runner_count - 1].lines = 0;
+            continue;
+        }
+        else if (buffer[first_char] == '#')
+        {
+            if (runner_count != 0)
+            {
+                fprintf(stderr, "set flags before creating runner");
+            }
+            printf("is flag\n");
             set_flags = 1;
             char *flag = trim(&buffer[first_char + 1]);
             printf("flag: %s\n", flag);
@@ -115,9 +142,9 @@ void read_testfile(Creal *input, const char *input_file)
             printf("value: %s\n", value);
             continue;
         }
-        size_t action_idx = index_of_char(buffer, ':');
-        if (action_idx != -1)
+        else if (action_idx != -1)
         {
+            printf("is action\n");
             char *action = copy_sub_str(buffer, ':');
             const char *untrimmed = copy_sub_str_offset(buffer, action_idx + 1);
             size_t value_idx = first_non_empty_char(untrimmed);
@@ -131,14 +158,23 @@ void read_testfile(Creal *input, const char *input_file)
                     continue;
                 }
                 add_line(input, trimmed_value);
+                add_line(&inputs[runner_count - 1], trimmed_value);
             }
             else if (strcmp(action, "command") == 0)
             {
                 input->command = (char *)trimmed_value;
+                inputs[runner_count - 1].command = (char *)trimmed_value;
+            }
+            else if (strcmp(action, "returncode") == 0)
+            {
+                input->returncode = atoi(action);
+                input[runner_count - 1].returncode = atoi(action);
             }
         }
     }
     fclose(file);
+    *count = (size_t)runner_count;
+    return inputs;
 }
 
 void execute_command(Creal *creal, char *cmd)
@@ -173,8 +209,12 @@ void execute_command(Creal *creal, char *cmd)
 
 void print_creal(Creal *creal)
 {
-    printf("command: %s\n", creal->command);
-    printf("returncode: %d\n", creal->returncode);
+    if (creal->command)
+        printf("command: %s\n", creal->command);
+    if (creal->returncode)
+        printf("returncode: %d\n", creal->returncode);
+    if (creal->lines)
+        printf("lines: %zu\n", creal->lines);
     for (size_t i = 0; i < creal->lines; i++)
         printf("%s", creal->output[i]);
     printf("\n");
@@ -189,13 +229,18 @@ int main(int argc, char *argv[])
     const char *test_file = argv[1];
     Creal *expected = init_creal();
     Creal *actual = init_creal();
-    read_testfile(expected, test_file);
+    size_t runner_count = 0;
+    Creal *runners = read_testfile(expected, test_file, &runner_count);
     printf("finished reading file...\n");
-    /* execute_command(actual, argv[1]); */
-    /* print_creal(actual); */
+    printf("runner_count: %zu\n", runner_count);
+    for (size_t i = 0; i < runner_count; i++)
+        print_creal(&runners[i]);
+    printf("printed all creals\n");
+    for (size_t i = 0; i < runner_count; i++)
+        destory_creal(&runners[i], 0);
     print_creal(expected);
-    destory_creal(expected);
-    destory_creal(actual);
+    destory_creal(expected, 1);
+    destory_creal(actual, 1);
     printf("done...\n");
     return 0;
 }

@@ -11,4 +11,3 @@ return: 0
 command: do
 return: 1
 stdout: hello
----
