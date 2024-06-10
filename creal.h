@@ -1,5 +1,6 @@
 #ifndef CREAL_H
 #define CREAL_H
+#include <stdint.h>
 #include <stdlib.h>
 typedef struct
 {
@@ -7,7 +8,14 @@ typedef struct
     size_t lines;
     char *command;
     char **output;
+
 } Creal;
+
+typedef enum
+{
+    STRICT = (1 << 1),
+    FAIL_UNEXPECTED_NEWLINES = (1 << 2),
+} Flags;
 
 Creal *init_creal();
 void destory_creal(Creal *creal, int can_destroy_self);
@@ -18,5 +26,5 @@ void print_creal(Creal *creal);
 
 void comapre_creals(const Creal *actual, const Creal *expected);
 
-Creal *read_testfile(const char *input_file, size_t *count);
+Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags);
 #endif

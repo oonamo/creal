@@ -68,3 +68,13 @@ char *rtrim(char *s)
 }
 
 char *trim(char *s) { return rtrim(ltrim(s)); }
+
+void print_bits(uint32_t bits)
+{
+    for (int i = 0; i < 32; i++)
+    {
+        uint8_t mask = 1 << i;
+        uint8_t bit = (bits & mask) >> i;
+        printf("%u", bit);
+    }
+}

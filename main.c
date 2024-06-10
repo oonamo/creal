@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEFAULT_FLAGS (FAIL_UNEXPECTED_NEWLINES | STRICT)
+
 void read_command() {}
 Creal *init_creal()
 {
@@ -58,12 +60,16 @@ void add_line(Creal *creal, const char *line)
 /// 2. Flags: Delimited with '#'s
 /// 3. Runner Seperators: seperated with '--'
 /// 3. Actions
-Creal *read_testfile(const char *input_file, size_t *count)
+Creal *read_testfile(const char *input_file, size_t *count, uint32_t *flags)
 {
     // get flags
     char buffer[1024];
     FILE *file;
-    Creal *inputs;
+    Creal *inputs = malloc(sizeof(Creal));
+    inputs[0].output = NULL;
+    inputs[0].command = NULL;
+    inputs[0].returncode = 0;
+    inputs[0].lines = 0;
 #ifdef _WIN32
     fopen_s(&file, input_file, "r");
 #else
@@ -102,7 +108,7 @@ Creal *read_testfile(const char *input_file, size_t *count)
             runner_count++;
             if (runner_count == 1)
             {
-                inputs = malloc(sizeof(Creal));
+                continue;
             }
             else
                 inputs = realloc(inputs, runner_count * sizeof(Creal));
@@ -130,20 +136,39 @@ Creal *read_testfile(const char *input_file, size_t *count)
             {
                 fprintf(stderr, "set flags before creating runner");
             }
-            /* printf("is flag\n"); */
             set_flags = 1;
-            char *flag = trim(&buffer[first_char + 1]);
-            /* printf("flag: %s\n", flag); */
-            size_t val_idx = index_of_char(flag, '=');
-            char *value;
-            value = strchr(flag, '=');
-            if (value == NULL)
+            char *unparsed = trim(&trimmed_buf[first_char + 1]);
+            char *flag = copy_sub_str(unparsed, '=');
+            size_t value_idx = index_of_char(unparsed, '=');
+            char *value = copy_sub_str_offset(unparsed, value_idx + 1);
+            if (strcmp(flag, "fail_on_unexpected_newline") == 0)
             {
-                /* printf("use default value\n"); */
+                if (strcmp(value, "TRUE") == 0)
+                {
+                    *flags |= FAIL_UNEXPECTED_NEWLINES;
+                }
+                else if (strcmp(value, "FALSE") == 0)
+                {
+                    *flags &= ~(FAIL_UNEXPECTED_NEWLINES);
+                }
                 continue;
             }
-            value = &value[1];
-            /* printf("value: %s\n", value); */
+            else if (strcmp(flag, "strict") == 0)
+            {
+                if (strcmp(value, "TRUE") == 0)
+                {
+                    *flags |= STRICT;
+                }
+                else if (strcmp(value, "FALSE") == 0)
+                {
+                    *flags &= ~(STRICT);
+                }
+                continue;
+            }
+            if (flag == NULL)
+            {
+                continue;
+            }
             continue;
         }
         else if (action_idx != -1)
@@ -209,8 +234,6 @@ void execute_command(Creal *creal)
         exit(EXIT_FAILURE);
     }
 
-    /* printf("executing command %s\n", creal->command); */
-
     // read line_wise
     while (fgets(buffer, sizeof(buffer), fp) != NULL)
     {
@@ -238,8 +261,16 @@ void print_creal(Creal *creal)
     printf("\n");
 }
 
-void compare_creals(const Creal *actual, const Creal *expected)
+void compare_creals(const Creal *actual, const Creal *expected, uint32_t flags)
 {
+    if (flags & FAIL_UNEXPECTED_NEWLINES)
+    {
+        printf("will fail on unexpected newlines\n");
+    }
+    if (flags & STRICT)
+    {
+        printf("will be strict\n");
+    }
     int is_match = 0;
     printf("expected stdout:\n");
     for (size_t i = 0; i < expected->lines; i++)
@@ -296,15 +327,15 @@ int main(int argc, char *argv[])
     }
     const char *test_file = argv[1];
     size_t runner_count = 0;
-    Creal *runners = read_testfile(test_file, &runner_count);
+    uint32_t flags = DEFAULT_FLAGS;
+    Creal *runners = read_testfile(test_file, &runner_count, &flags);
     for (size_t i = 0; i < runner_count; i++)
     {
         Creal *test = &runners[i];
         Creal *actual = init_creal();
         actual->command = test->command;
-        /* actual->command = "echo test"; */
         execute_command(actual);
-        compare_creals(actual, test);
+        compare_creals(actual, test, flags);
         destory_creal(actual, 1);
     }
     printf("tested all creals\n");
