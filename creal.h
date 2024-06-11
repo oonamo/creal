@@ -8,6 +8,7 @@ typedef struct
     size_t lines;
     char *command;
     char **output;
+    char *name;
 
 } Creal;
 

@@ -75,6 +75,7 @@ Creal *init_creal()
     c->returncode = 0;
     c->output = NULL;
     c->command = NULL;
+    c->name = NULL;
     return c;
 }
 
@@ -174,8 +175,10 @@ void add_line(Creal *creal, const char *line)
 int compare_creals(const Creal *actual, const Creal *expected)
 {
     int failed = 0, is_match = 0;
-    verbose_print_c(YELLOW, "testing command %s\n", expected->command);
+    verbose_print_c(YELLOW, "testing command '%s'\n", expected->command);
+    verbose_print_c(YELLOW, "testing runner '%s'\n", expected->name);
     verbose_print_c(CYAN, "active flags:\n");
+    // TODO: extract to function
     if (flags & FAIL_UNEXPECTED_NEWLINES)
     {
         verbose_print_c(CYAN, "\tfail_unexpected_newlines\n");
@@ -290,6 +293,13 @@ int compare_creals(const Creal *actual, const Creal *expected)
                     verbose_printf("size of actual line: %zu\n", act_len);
                     failed |= 1;
                 }
+                else
+                {
+                    verbose_print_c(
+                        YELLOW,
+                        "Found an extra new line or space. Ignoring due to "
+                        "'fail_on_unexpected_newline' flag being active");
+                }
             }
         }
         else
@@ -336,6 +346,7 @@ Creal *read_testfile(const char *input_file, size_t *count)
     inputs[0].command = NULL;
     inputs[0].returncode = 0;
     inputs[0].lines = 0;
+    inputs[0].name = "0";
 #ifdef _WIN32
     fopen_s(&file, input_file, "r");
 #else
@@ -397,7 +408,8 @@ Creal *read_testfile(const char *input_file, size_t *count)
             int res = compare_creals(actual, test);
             if (res == 1)
             {
-                print_c(RED, "failed on runner %zu", runner_count - 1);
+                print_c(RED, "failed on runner %s",
+                        inputs[runner_count - 1].name);
             }
             destory_creal(actual, 0);
 
@@ -405,7 +417,9 @@ Creal *read_testfile(const char *input_file, size_t *count)
             inputs[runner_count - 1].output = NULL;
             inputs[runner_count - 1].command = NULL;
             inputs[runner_count - 1].returncode = 0;
-            inputs[runner_count - 1].lines = 0;
+            inputs[runner_count - 1].name =
+                malloc(num_digits(runner_count - 1));
+            itoa(runner_count - 1, inputs[runner_count - 1].name, 10);
             continue;
         }
         else if (buffer[first_char] == '#')
@@ -433,8 +447,6 @@ Creal *read_testfile(const char *input_file, size_t *count)
             size_t value_idx = first_non_empty_char(untrimmed);
             const char *trimmed_value =
                 trim(copy_sub_str_offset(untrimmed, value_idx));
-            /* print_c(CYAN, "Found action %s and value %s\n", action,
-               untrimmed); */
             if (strcmp(action, "stdout") == 0)
             {
                 if (strcmp(trimmed_value, "|") == 0)
@@ -447,12 +459,14 @@ Creal *read_testfile(const char *input_file, size_t *count)
             else if (strcmp(action, "command") == 0)
             {
                 inputs[runner_count - 1].command = (char *)trimmed_value;
-                verbose_printf("action was command\n");
             }
             else if (strcmp(action, "returncode") == 0)
             {
                 inputs[runner_count - 1].returncode = atoi(trimmed_value);
-                verbose_printf("action was returncode\n");
+            }
+            else if (strcmp(action, "name") == 0)
+            {
+                inputs[runner_count - 1].name = (char *)trimmed_value;
             }
         }
     }
@@ -464,7 +478,7 @@ Creal *read_testfile(const char *input_file, size_t *count)
     int res = compare_creals(actual, test);
     if (res == 1)
     {
-        print_c(RED, "failed on runner %zu\n", runner_count - 1);
+        print_c(RED, "failed on runner %s\n", inputs[runner_count - 1].name);
     }
     destory_creal(actual, 0);
     fclose(file);
