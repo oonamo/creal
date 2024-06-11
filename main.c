@@ -412,6 +412,7 @@ Creal *read_testfile(const char *input_file, size_t *count)
                         inputs[runner_count - 1].name);
             }
             destory_creal(actual, 0);
+            destory_creal(&inputs[runner_count - 1], 0);
 
             runner_count++;
             inputs[runner_count - 1].output = NULL;
@@ -481,6 +482,7 @@ Creal *read_testfile(const char *input_file, size_t *count)
         print_c(RED, "failed on runner %s\n", inputs[runner_count - 1].name);
     }
     destory_creal(actual, 0);
+    destory_creal(&inputs[runner_count - 1], 0);
     fclose(file);
     *count = (size_t)runner_count;
     return inputs;
@@ -559,7 +561,7 @@ int main(int argc, char *argv[])
 
     Creal *runners = read_testfile(test_file, &runner_count);
     print_c(GREEN, "tested all creals\n");
-    for (size_t i = 0; i < runner_count; i++)
-        destory_creal(&runners[i], 0);
+    /* for (size_t i = 0; i < runner_count; i++) */
+    /*     destory_creal(&runners[i], 0); */
     return 0;
 }
