@@ -5,10 +5,34 @@
 #include <string.h>
 
 #define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT)
-
 static uint32_t flags = DEFAULT_FLAGS;
 
-void read_command() {}
+void verbose_printf(const char *fmt, ...)
+{
+    if (flags & VERBOSE)
+    {
+        va_list args;
+        va_start(args, fmt);
+        vprintf(fmt, args);
+        va_end(args);
+    }
+}
+
+void verbose_print_c(COLOR c, const char *fmt, ...)
+{
+    if (flags & VERBOSE)
+    {
+        va_list args;
+        char mod_fmt[2000];
+
+        snprintf(mod_fmt, sizeof(mod_fmt), "\x1b[%dm%s\x1b[%dm", c, fmt, CLEAR);
+
+        va_start(args, fmt);
+        vfprintf(stdout, mod_fmt, args);
+        va_end(args);
+    }
+}
+
 Creal *init_creal()
 {
     Creal *c = malloc(sizeof(Creal));
@@ -36,6 +60,62 @@ void destory_creal(Creal *creal, int can_destroy_self)
         free(creal);
 }
 
+int flag_is_true(const char *value, int fallback)
+{
+    if (strcmp(value, "true") == 0 || strcmp(value, value) == 0 ||
+        isnewline_or_space((char *)value))
+    {
+        return 1;
+    }
+    else if (strcmp(value, "false") == 0)
+    {
+        return 0;
+    }
+    else
+        return fallback;
+}
+
+int parse_flag(const char *unparsed_flag)
+{
+    char *flag = copy_sub_str(unparsed_flag, '=');
+    size_t value_idx = index_of_char(unparsed_flag, '=');
+    char *value = copy_sub_str_offset(unparsed_flag, value_idx + 1);
+    int flag_on = flag_is_true(value, -1);
+    Flags e_flag;
+    if (strcmp(flag, "fail_on_unexpected_newline") == 0)
+    {
+        e_flag = FAIL_UNEXPECTED_NEWLINES;
+    }
+    else if (strcmp(flag, "strict") == 0)
+    {
+        e_flag = STRICT;
+    }
+    else if (strcmp(flag, "trim_command_output") == 0)
+    {
+        e_flag = TRIM_COMMAND_OUTPUT;
+    }
+    else if (strcmp(flag, "verbose") == 0)
+    {
+        e_flag = VERBOSE;
+    }
+    if (flag_on == 1)
+    {
+        flags |= e_flag;
+    }
+    else if (flag_on == 0)
+    {
+        flags &= ~(e_flag);
+    }
+    else
+    {
+        if (flags & STRICT)
+        {
+            return -1;
+        }
+    }
+    return 0;
+}
+
 void add_line(Creal *creal, const char *line)
 {
     // increase size by 1
@@ -57,16 +137,26 @@ void add_line(Creal *creal, const char *line)
     creal->lines++;
 }
 
-void compare_creals(const Creal *actual, const Creal *expected)
+int compare_creals(const Creal *actual, const Creal *expected)
 {
     int failed = 0, is_match = 0;
+    verbose_print_c(YELLOW, "testing command %s\n", expected->command);
+    verbose_print_c(CYAN, "active flags:\n");
     if (flags & FAIL_UNEXPECTED_NEWLINES)
     {
-        print_c(YELLOW, "will fail on unexpected newlines\n");
+        verbose_print_c(CYAN, "\tfail_unexpected_newlines\n");
     }
     if (flags & STRICT)
     {
-        print_c(YELLOW, "will be strict\n");
+        verbose_print_c(CYAN, "\tstrict\n");
+    }
+    if (flags & VERBOSE)
+    {
+        verbose_print_c(CYAN, "\tverbose\n");
+    }
+    if (flags & TRIM_COMMAND_OUTPUT)
+    {
+        verbose_print_c(CYAN, "\ttrim_command_output\n\n");
     }
     size_t num_lines = expected->lines;
     if (actual->command != expected->command)
@@ -78,27 +168,28 @@ void compare_creals(const Creal *actual, const Creal *expected)
         printf("\t%s\n", actual->command);
         is_match++;
     }
-    if (actual->returncode != expected->returncode)
-    {
-        fprintf(stderr, "return codes are diffrent\n");
-        printf("expected:\n");
-        printf("\t%d\n", expected->returncode);
-        printf("actual:\n");
-        printf("\t%d\n", actual->returncode);
-        is_match++;
-    }
     if (actual->lines != expected->lines)
     {
-        fprintf(stderr,
-                "the two have diffrent amount of lines printed to stdout\n");
-        fprintf(stderr, "return codes are diffrent\n");
-        printf("expected:\n");
-        printf("\t%zu\n", expected->lines);
-        printf("actual:\n");
-        printf("\t%zu\n", actual->lines);
+        if (flags & STRICT)
+        {
+            print_c(RED, "The output contains diffrent number of lines than "
+                         "what was expected:\n");
+            print_c(RED, "Expected %zu lines. Found %zu lines.\n",
+                    expected->lines, actual->lines);
+            is_match++;
+        }
+        else
+        {
+            verbose_print_c(YELLOW,
+                            "The output contains diffrent number of lines than "
+                            "what was expected:\n");
+            verbose_print_c(YELLOW, "Expected %zu lines. Found %zu lines.\n",
+                            expected->lines, actual->lines);
+        }
+        verbose_print_c(YELLOW, "This may result in a pass or failed test, "
+                                "which may depend on the active flags\n");
         num_lines =
             actual->lines > expected->lines ? actual->lines : expected->lines;
-        is_match++;
     }
     for (size_t i = 0; i < num_lines; i++)
     {
@@ -128,6 +219,13 @@ void compare_creals(const Creal *actual, const Creal *expected)
                     print_c(RED, "ouput has an extra new line or space\n");
                     failed |= 1;
                 }
+                else
+                {
+                    verbose_print_c(
+                        YELLOW,
+                        "Found an extra new line or space. Ignoring due to "
+                        "'fail_on_unexpected_newline' flag being active");
+                }
             }
             else
             {
@@ -138,26 +236,36 @@ void compare_creals(const Creal *actual, const Creal *expected)
         }
         if (strcmp(actual->output[i], expected->output[i]) != 0)
         {
-            size_t act_len = strlen(actual->output[i]);
-            size_t exp_len = strlen(expected->output[i]);
-            printf("act len: %zu, exp_len %zu\n", act_len, exp_len);
-            if (isnewline_or_space(actual->output[i]) != 0)
+            if (flags & TRIM_COMMAND_OUTPUT)
             {
-                print_c(GREEN, "differs by newline\n");
+                if (strcmp(trim(actual->output[i]),
+                           trim(expected->output[i])) != 0)
+                {
+                    print_c(RED, "Lines %zu differ\n", i);
+                    print_c(RED, "expected:\n");
+                    printf("%s\n", expected->output[i]);
+                    print_c(RED, "actual:\n");
+                    printf("%s\n", actual->output[i]);
+                    failed |= 1;
+                }
             }
-            if (isnewline_or_space(expected->output[i]) != 0)
-            {
-                print_c(GREEN, "differs by newline\n");
-            }
-            print_c(GREEN, "expected:\n%s\n", expected->output[i]);
-            print_c(RED, "actual:\n%s\n", actual->output[i]);
         }
         else
         {
-            print_c(GREEN, "%s\n", actual->output[i]);
+            verbose_printf("%s\n", actual->output[i]);
         }
     }
-    if (is_match != 0)
+    if (actual->returncode != expected->returncode)
+    {
+        fprintf(stderr, "return codes are diffrent\n");
+        printf("expected:\n");
+        printf("\t%d\n", expected->returncode);
+        printf("actual:\n");
+        printf("\t%d\n", actual->returncode);
+        is_match++;
+        failed |= 1;
+    }
+    if (failed == 1)
     {
         print_c(RED, "assertions failed\n");
     }
@@ -165,6 +273,7 @@ void compare_creals(const Creal *actual, const Creal *expected)
     {
         print_c(GREEN, "assertion pasesd\n");
     }
+    return failed;
 }
 
 /// read line by line
@@ -221,12 +330,6 @@ Creal *read_testfile(const char *input_file, size_t *count)
         }
         else if (strcmp(trimmed_buf, "---") == 0)
         {
-            set_flags = 1;
-            if (flags & STRICT)
-            {
-            }
-
-            // first --- in file
             if (runner_count == 0)
             {
                 runner_count++;
@@ -250,7 +353,11 @@ Creal *read_testfile(const char *input_file, size_t *count)
             Creal *actual = init_creal();
             actual->command = test->command;
             execute_command(actual);
-            compare_creals(actual, test);
+            int res = compare_creals(actual, test);
+            if (res == 1)
+            {
+                print_c(RED, "failed on runner %zu", runner_count - 1);
+            }
             destory_creal(actual, 0);
 
             runner_count++;
@@ -268,44 +375,7 @@ Creal *read_testfile(const char *input_file, size_t *count)
             }
             set_flags = 1;
             char *unparsed = str_tolower(trim(&trimmed_buf[first_char + 1]));
-            char *flag = copy_sub_str(unparsed, '=');
-            size_t value_idx = index_of_char(unparsed, '=');
-            char *value = copy_sub_str_offset(unparsed, value_idx + 1);
-            if (strcmp(flag, "fail_on_unexpected_newline") == 0)
-            {
-                if (strcmp(value, "true") == 0)
-                {
-                    flags |= FAIL_UNEXPECTED_NEWLINES;
-                }
-                else if (strcmp(value, "false") == 0)
-                {
-                    flags &= ~(FAIL_UNEXPECTED_NEWLINES);
-                }
-                continue;
-            }
-            else if (strcmp(flag, "strict") == 0)
-            {
-                if (strcmp(value, "true") == 0)
-                {
-                    flags |= STRICT;
-                }
-                else if (strcmp(value, "false") == 0)
-                {
-                    flags &= ~(STRICT);
-                }
-                continue;
-            }
-            else if (strcmp(flag, "trim_command_output") == 0)
-            {
-                if (strcmp(value, "true") == 0)
-                {
-                    flags |= STRICT;
-                }
-                else if (strcmp(value, "false") == 0)
-                {
-                    flags &= ~(STRICT);
-                }
-            }
+            parse_flag(unparsed);
             continue;
         }
         else if (action_idx != -1)
@@ -322,6 +392,8 @@ Creal *read_testfile(const char *input_file, size_t *count)
             size_t value_idx = first_non_empty_char(untrimmed);
             const char *trimmed_value =
                 trim(copy_sub_str_offset(untrimmed, value_idx));
+            /* print_c(CYAN, "Found action %s and value %s\n", action,
+               untrimmed); */
             if (strcmp(action, "stdout") == 0)
             {
                 if (strcmp(trimmed_value, "|") == 0)
@@ -334,10 +406,12 @@ Creal *read_testfile(const char *input_file, size_t *count)
             else if (strcmp(action, "command") == 0)
             {
                 inputs[runner_count - 1].command = (char *)trimmed_value;
+                verbose_printf("action was command\n");
             }
             else if (strcmp(action, "returncode") == 0)
             {
                 inputs[runner_count - 1].returncode = atoi(trimmed_value);
+                verbose_printf("action was returncode\n");
             }
         }
     }
@@ -347,7 +421,11 @@ Creal *read_testfile(const char *input_file, size_t *count)
     Creal *actual = init_creal();
     actual->command = test->command;
     execute_command(actual);
-    compare_creals(actual, test);
+    int res = compare_creals(actual, test);
+    if (res == 1)
+    {
+        print_c(RED, "failed on runner %zu\n", runner_count - 1);
+    }
     destory_creal(actual, 0);
     fclose(file);
     *count = (size_t)runner_count;
@@ -362,6 +440,13 @@ void append_std_err_redir(char *cmd)
         strcat(cmd, " 2>&1");
 }
 
+void prepend_shell(char *cmd, const char *prep)
+{
+    size_t len = strlen(prep);
+    memmove(cmd + len, cmd, strlen(cmd) + 1);
+    memcpy(cmd, prep, len);
+}
+
 void execute_command(Creal *creal)
 {
     FILE *fp;
@@ -369,8 +454,10 @@ void execute_command(Creal *creal)
     size_t line = 0;
     append_std_err_redir(creal->command);
 #ifdef _WIN32
+    prepend_shell(creal->command, "cmd /c ");
     fp = _popen(creal->command, "rb"); // redirect to stderr
 #else
+    prepend_shell(creal->command, "sh -c ");
     fp = popen(cmd, "r");
 #endif
     if (fp == NULL)
@@ -415,6 +502,7 @@ int main(int argc, char *argv[])
     }
     const char *test_file = argv[1];
     size_t runner_count = 0;
+
     Creal *runners = read_testfile(test_file, &runner_count);
     print_c(GREEN, "tested all creals\n");
     for (size_t i = 0; i < runner_count; i++)

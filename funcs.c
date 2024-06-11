@@ -33,7 +33,7 @@ char *copy_sub_str(const char *source, char delimiter)
     {
         return strdup(source);
     }
-    char *dest = (char *)malloc((idx + 1) * sizeof(char));
+    char *dest = (char *)malloc((idx + 1));
     if (dest == NULL)
     {
         fprintf(stderr, "failed to allocate memory\n");
@@ -89,14 +89,13 @@ char *str_tolower(char *str)
 
 void print_c(COLOR c, const char *fmt, ...)
 {
-    /* char *copy; */
-    /* sprintf(copy, "\x1b[%dm%s\x1b[%dm\n", c, fmt, CLEAR); */
     va_list args;
-    char mod_fmt[1000];
+    char mod_fmt[2000];
+
     snprintf(mod_fmt, sizeof(mod_fmt), "\x1b[%dm%s\x1b[%dm", c, fmt, CLEAR);
 
     va_start(args, fmt);
-    vprintf(mod_fmt, args);
+    vfprintf(stdout, mod_fmt, args);
     va_end(args);
 }
 

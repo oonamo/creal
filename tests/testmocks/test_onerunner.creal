@@ -1,0 +1,8 @@
+---
+command: creal.exe ./tests/mocks/one_runner.creal
+returncode: 0
+stdout: |
+assertion passed
+tested all creals
+done...
+        |

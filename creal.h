@@ -16,6 +16,7 @@ typedef enum
     STRICT = (1 << 1),
     FAIL_UNEXPECTED_NEWLINES = (1 << 2),
     TRIM_COMMAND_OUTPUT = (1 << 3),
+    VERBOSE = (1 << 4),
 } Flags;
 
 Creal *init_creal();

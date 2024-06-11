@@ -1,5 +1,6 @@
 #strict=FALSE
 #fail_on_unexpected_newline=FALSE
+#verbose
 ---
 command: echo hello
 stdout: hello

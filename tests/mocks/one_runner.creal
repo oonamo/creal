@@ -1,4 +1,3 @@
-#strict=true
 ---
 command: echo hello
 returncode: 0
