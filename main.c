@@ -7,6 +7,27 @@
 #define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT)
 static uint32_t flags = DEFAULT_FLAGS;
 
+void print_c(COLOR c, const char *fmt, ...)
+{
+    if (flags & COLOR_OFF)
+    {
+        va_list args;
+        va_start(args, fmt);
+        vprintf(fmt, args);
+        va_end(args);
+        return;
+    }
+
+    va_list args;
+    char mod_fmt[2000];
+
+    snprintf(mod_fmt, sizeof(mod_fmt), "\x1b[%dm%s\x1b[%dm", c, fmt, CLEAR);
+
+    va_start(args, fmt);
+    vfprintf(stdout, mod_fmt, args);
+    va_end(args);
+}
+
 void verbose_printf(const char *fmt, ...)
 {
     if (flags & VERBOSE)
@@ -22,6 +43,15 @@ void verbose_print_c(COLOR c, const char *fmt, ...)
 {
     if (flags & VERBOSE)
     {
+        // TODO: Figure out how to redirect this to verbose_printf
+        if (flags & COLOR_OFF)
+        {
+            va_list args;
+            va_start(args, fmt);
+            vprintf(fmt, args);
+            va_end(args);
+            return;
+        }
         va_list args;
         char mod_fmt[2000];
 
@@ -98,6 +128,10 @@ int parse_flag(const char *unparsed_flag)
     {
         e_flag = VERBOSE;
     }
+    else if (strcmp(flag, "color_off") == 0)
+    {
+        e_flag = COLOR_OFF;
+    }
     if (flag_on == 1)
     {
         flags |= e_flag;
@@ -156,7 +190,11 @@ int compare_creals(const Creal *actual, const Creal *expected)
     }
     if (flags & TRIM_COMMAND_OUTPUT)
     {
-        verbose_print_c(CYAN, "\ttrim_command_output\n\n");
+        verbose_print_c(CYAN, "\ttrim_command_output\n");
+    }
+    if (flags & COLOR_OFF)
+    {
+        verbose_print_c(CYAN, "\tcolor_off\n\n");
     }
     size_t num_lines = expected->lines;
     if (actual->command != expected->command)
@@ -241,11 +279,15 @@ int compare_creals(const Creal *actual, const Creal *expected)
                 if (strcmp(trim(actual->output[i]),
                            trim(expected->output[i])) != 0)
                 {
+                    size_t act_len = strlen(actual->output[i]);
+                    size_t exp_len = strlen(expected->output[i]);
                     print_c(RED, "Lines %zu differ\n", i);
                     print_c(RED, "expected:\n");
                     printf("%s\n", expected->output[i]);
+                    verbose_printf("size of expected line: %zu\n", exp_len);
                     print_c(RED, "actual:\n");
                     printf("%s\n", actual->output[i]);
+                    verbose_printf("size of actual line: %zu\n", act_len);
                     failed |= 1;
                 }
             }
@@ -271,7 +313,7 @@ int compare_creals(const Creal *actual, const Creal *expected)
     }
     else
     {
-        print_c(GREEN, "assertion pasesd\n");
+        print_c(GREEN, "assertions passed\n");
     }
     return failed;
 }
@@ -307,7 +349,6 @@ Creal *read_testfile(const char *input_file, size_t *count)
     int is_stdout = 0;
     int set_flags = 0;
     size_t runner_count = 0;
-    /* printf("running\n"); */
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
         char *copy = strdup(buffer);
@@ -416,7 +457,6 @@ Creal *read_testfile(const char *input_file, size_t *count)
         }
     }
     // evaluate last runner
-    /* runner_count++; */
     Creal *test = &inputs[runner_count - 1];
     Creal *actual = init_creal();
     actual->command = test->command;
@@ -507,6 +547,5 @@ int main(int argc, char *argv[])
     print_c(GREEN, "tested all creals\n");
     for (size_t i = 0; i < runner_count; i++)
         destory_creal(&runners[i], 0);
-    printf("done...\n");
     return 0;
 }

@@ -17,6 +17,7 @@ typedef enum
     FAIL_UNEXPECTED_NEWLINES = (1 << 2),
     TRIM_COMMAND_OUTPUT = (1 << 3),
     VERBOSE = (1 << 4),
+    COLOR_OFF = (1 << 5),
 } Flags;
 
 Creal *init_creal();

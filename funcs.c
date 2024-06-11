@@ -87,18 +87,6 @@ char *str_tolower(char *str)
     return str;
 }
 
-void print_c(COLOR c, const char *fmt, ...)
-{
-    va_list args;
-    char mod_fmt[2000];
-
-    snprintf(mod_fmt, sizeof(mod_fmt), "\x1b[%dm%s\x1b[%dm", c, fmt, CLEAR);
-
-    va_start(args, fmt);
-    vfprintf(stdout, mod_fmt, args);
-    va_end(args);
-}
-
 int isnewline_or_space(char *str)
 {
     int isblank = -1;

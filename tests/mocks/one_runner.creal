@@ -1,3 +1,4 @@
+#color_off
 ---
 command: echo hello
 returncode: 0
