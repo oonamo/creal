@@ -1,13 +1,12 @@
-#strict=FALSE
-#fail_on_unexpected_newline=FALSE
+#strict=false
+#fail_on_unexpected_newline=false
 #verbose
 ---
 command: echo hello
 stdout: hello
 returncode: 0
-
-#no_color
 ---
+#color_off
 command: do
 returncode: 1
 stdout: |

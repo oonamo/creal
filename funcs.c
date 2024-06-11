@@ -49,7 +49,10 @@ char *copy_sub_str_offset(const char *source, size_t offset)
     size_t len = strlen(source);
     if (offset >= len)
         return strdup("");
-    return strdup(source + offset);
+    size_t sub_len = len - offset;
+    char *sub_str = (char *)malloc(sub_len + 1);
+    strcpy(sub_str, source + offset);
+    return sub_str;
 }
 
 char *ltrim(char *s)

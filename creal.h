@@ -14,6 +14,7 @@ typedef struct
 
 typedef enum
 {
+    NONE = 0,
     STRICT = (1 << 1),
     FAIL_UNEXPECTED_NEWLINES = (1 << 2),
     TRIM_COMMAND_OUTPUT = (1 << 3),

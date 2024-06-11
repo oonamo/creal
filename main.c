@@ -93,14 +93,15 @@ void destory_creal(Creal *creal, int can_destroy_self)
 
 int flag_is_true(const char *value, int fallback)
 {
-    if (strcmp(value, "true") == 0 || strcmp(value, value) == 0 ||
-        isnewline_or_space((char *)value))
-    {
-        return 1;
-    }
-    else if (strcmp(value, "false") == 0)
+    /* char *bool = str_tolower((char *)value); */
+    if (strcmp(value, "false") == 0)
     {
         return 0;
+    }
+    else if (strcmp(value, "true") == 0 || strcmp(value, value) == 0 ||
+             isnewline_or_space((char *)value))
+    {
+        return 1;
     }
     else
         return fallback;
@@ -112,34 +113,45 @@ int parse_flag(const char *unparsed_flag)
     size_t value_idx = index_of_char(unparsed_flag, '=');
     char *value = copy_sub_str_offset(unparsed_flag, value_idx + 1);
     int flag_on = flag_is_true(value, -1);
-    Flags e_flag;
+    Flags e_flag = NONE;
     if (strcmp(flag, "fail_on_unexpected_newline") == 0)
     {
         e_flag = FAIL_UNEXPECTED_NEWLINES;
+        verbose_print_c(CYAN, "found flag 'fail_on_unexpected_newline'\n");
     }
     else if (strcmp(flag, "strict") == 0)
     {
         e_flag = STRICT;
+        verbose_print_c(CYAN, "found flag 'strict'\n");
     }
     else if (strcmp(flag, "trim_command_output") == 0)
     {
         e_flag = TRIM_COMMAND_OUTPUT;
+        verbose_print_c(CYAN, "found flag 'trim_command_output'\n");
     }
     else if (strcmp(flag, "verbose") == 0)
     {
         e_flag = VERBOSE;
+        verbose_print_c(CYAN, "found flag 'verbose'\n");
     }
     else if (strcmp(flag, "color_off") == 0)
     {
         e_flag = COLOR_OFF;
+        verbose_print_c(CYAN, "found flag 'color_off'\n");
+    }
+    if (e_flag == NONE)
+    {
+        verbose_print_c(RED, "found no valid flag for vvalue '%s'\n", flag);
     }
     if (flag_on == 1)
     {
         flags |= e_flag;
+        verbose_print_c(CYAN, "enabling...\n");
     }
     else if (flag_on == 0)
     {
         flags &= ~(e_flag);
+        verbose_print_c(CYAN, "disabling...\n");
     }
     else
     {
@@ -378,6 +390,7 @@ Creal *read_testfile(const char *input_file, size_t *count)
         }
         else if (first_char == -1)
         {
+            printf("this returnded -1\n");
             continue;
         }
         else if (strcmp(trimmed_buf, "---") == 0)
@@ -425,13 +438,12 @@ Creal *read_testfile(const char *input_file, size_t *count)
         }
         else if (buffer[first_char] == '#')
         {
-            if (runner_count != 0)
-            {
-                fprintf(stderr, "set flags before creating runner");
-            }
-            set_flags = 1;
             char *unparsed = str_tolower(trim(&trimmed_buf[first_char + 1]));
-            parse_flag(unparsed);
+            int res = parse_flag(unparsed);
+            if (res == -1)
+            {
+                printf("did not find value %s\n", unparsed);
+            }
             continue;
         }
         else if (action_idx != -1)
