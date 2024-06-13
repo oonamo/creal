@@ -1,15 +1,19 @@
+#debug
+#verbose
 #strict=false
 #fail_on_unexpected_newline=false
-#verbose
----
 command: echo hello
 stdout: hello
 returncode: 0
 ---
-#color_off
 command: do
 returncode: 1
 stdout: |
 'do' is not recognized as an internal or external command,
 operable program or batch file.
         |
+---
+name: should fail
+command: hello world
+returncode: 0
+stdout: nothing

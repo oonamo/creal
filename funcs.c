@@ -109,7 +109,9 @@ int isnewline_or_space(char *str)
 int num_digits(size_t num)
 {
     if (num < 0)
-        num = (num == INT_MIN) ? INT_MAX : -num;
+    {
+        fprintf(stderr, "Runner counnt is less than zero\n");
+    }
     if (num < 10)
         return 1;
     if (num < 100)
