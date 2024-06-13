@@ -1,2 +1,2 @@
 build:
-	gcc ./main.c -o creal
+	gcc ./creal.c -o creal

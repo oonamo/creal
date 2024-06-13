@@ -513,16 +513,8 @@ void read_testfile(const char *input_file, size_t *count)
                 continue;
             }
             runner_count++;
-            Creal *actual = init_creal();
-            actual->command = input->command;
-            execute_command(actual);
-            int res = compare_creals(actual, input);
-            if (res)
-            {
-                printf("runner '%s' was a failure", input->name);
-            }
+            execute_runner(input, &failures, &fail_count);
             destory_creal(input, 0);
-            destory_creal(actual, 1);
             input = init_creal();
             printf("---\n");
             continue;
@@ -597,20 +589,9 @@ void read_testfile(const char *input_file, size_t *count)
             itoa(runner_count, input->name, 10);
         }
         runner_count++;
-        Creal *actual = init_creal();
-        actual->command = input->command;
-        execute_command(actual);
-
-        int res = compare_creals(actual, input);
-        if (res)
-        {
-            add_to_failure(&failures, input, &fail_count);
-        }
-
+        execute_runner(input, &failures, &runner_count);
         destory_creal(input, 1);
-        destory_creal(actual, 1);
         printf("---\n");
-
         if (fail_count)
         {
             print_c(RED, "failed runner: \n");
