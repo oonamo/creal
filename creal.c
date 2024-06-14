@@ -120,6 +120,7 @@ void destory_creal(Creal *creal, int can_destroy_self)
     {
         return;
     }
+    print_creal(creal);
     if (creal->output != NULL)
     {
         for (size_t i = 0; i < creal->lines; i++)
@@ -182,7 +183,7 @@ int parse_flag(const char *unparsed_flag)
     else if (strcmp(flag, "verbose") == 0)
     {
         e_flag = VERBOSE;
-        verbose_print_c(CYAN, "found flag 'verbose'\n");
+        debug_print_c(CYAN, "found flag 'verbose'\n");
     }
     else if (strcmp(flag, "color_off") == 0)
     {
@@ -227,9 +228,9 @@ void add_line(Creal *creal, const char *line)
         exit(1);
     }
     if (flags & TRIM_COMMAND_OUTPUT)
-        creal->output[creal->lines] = trim(_strdup(line));
+        creal->output[creal->lines] = trim(strdup(line));
     else
-        creal->output[creal->lines] = _strdup(line);
+        creal->output[creal->lines] = strdup(line);
     if (creal->output[creal->lines] == NULL)
     {
         fprintf(stderr, "Failed to allocate memory in lines\n");
@@ -271,15 +272,6 @@ int compare_creals(const Creal *actual, const Creal *expected)
     verbose_print_c(YELLOW, "testing runner '%s'\n", expected->name);
     print_flags();
     size_t num_lines = expected->lines;
-    if (actual->command != expected->command)
-    {
-        fprintf(stderr, "unexpected behavior occured\n");
-        printf("expected:\n");
-        printf("\t%s\n", expected->command);
-        printf("actual:\n");
-        printf("\t%s\n", actual->command);
-        is_match++;
-    }
     if (expected->lines != 0)
     {
         if (actual->lines != expected->lines)
@@ -405,31 +397,38 @@ int compare_creals(const Creal *actual, const Creal *expected)
     return failed;
 }
 
-int execute_runner(Creal *runner, char ***failures, size_t *fail_count)
+int execute_runner(Creal *runner, char **failures, size_t fail_count)
 {
     Creal *actual = init_creal();
-    actual->command = runner->command;
+    // actual->command = runner->command; <-- May throw error
+    actual->command = malloc(strlen(runner->command) + 1);
+    strcpy(actual->command, runner->command);
+    debug_printf("executing runner %s\n", runner->name);
+    printf("running command actual\n");
     execute_command(actual);
+    printf("ran command actual\n");
     int res = compare_creals(actual, runner);
+    debug_printf("destroying 'actual' runner\n");
     destory_creal(actual, 1);
+    debug_printf("destroyed 'actual' runner\n");
     if (res)
     {
         add_to_failure(failures, runner, fail_count);
+        fail_count++;
     }
     return res;
 }
 
-void add_to_failure(char ***failures, Creal *runner, size_t *fail_count)
+void add_to_failure(char **failures, Creal *runner, size_t fail_count)
 {
-    *failures = realloc(*failures, (*fail_count + 1) * sizeof(char *));
-    if (*failures == NULL)
+    failures = realloc(failures, (fail_count + 1) * sizeof(char *));
+    if (failures == NULL)
     {
         print_c(RED, "failed to allocate memory for failues\n");
         exit(EXIT_FAILURE);
     }
-    *failures[*fail_count] = malloc(strlen(runner->name) + 1);
-    strcpy(*failures[*fail_count], runner->name);
-    *fail_count++;
+    failures[fail_count] = malloc(strlen(runner->name) + 1);
+    strcpy(failures[fail_count], runner->name);
 }
 
 int validate_runner(const Creal *creal)
@@ -495,8 +494,10 @@ void read_testfile(const char *input_file, size_t *count)
         {
             if (input->name == NULL)
             {
-                input->name = malloc(sizeof(char) * num_digits(runner_count));
-                itoa(runner_count, input->name, 10);
+                input->name =
+                    malloc(sizeof(char) * num_digits(runner_count) + 1);
+                sprintf(input->name, "%zu", runner_count);
+                /*itoa(runner_count, input->name, 10);*/
             }
             int ok = validate_runner(input);
             if (!ok)
@@ -513,10 +514,9 @@ void read_testfile(const char *input_file, size_t *count)
                 continue;
             }
             runner_count++;
-            execute_runner(input, &failures, &fail_count);
+            execute_runner(input, failures, fail_count);
             destory_creal(input, 0);
             input = init_creal();
-            printf("---\n");
             continue;
         }
         // Indicates flag
@@ -526,7 +526,13 @@ void read_testfile(const char *input_file, size_t *count)
             int res = parse_flag(unparsed);
             if (res == -1)
             {
-                printf("did not find value %s\n", unparsed);
+                if (flags & STRICT)
+                {
+                    print_c(RED, "did not find value %s\n", unparsed);
+                    exit(EXIT_FAILURE);
+                }
+                verbose_print_c(YELLOW, "flag '%s' does not exist.\n",
+                                unparsed);
             }
             continue;
         }
@@ -549,7 +555,18 @@ void read_testfile(const char *input_file, size_t *count)
             }
             else if (strcmp(action, "command") == 0)
             {
-                input->command = (char *)trimmed_value;
+                /*input->command = (char *)trimmed_value;*/
+                debug_printf("allocating for command\n");
+                /*for (int i = 0; trimmed_value[i] != '\0'; i++)*/
+                /*{*/
+                /*    printf("not null\n");*/
+                /*    // Do nothing, just iterating*/
+                /*}*/
+                input->command = malloc(strlen((char *)trimmed_value) + 1);
+                debug_printf("allocated for command\n");
+                debug_printf("copying command...\n");
+                strcpy(input->command, trimmed_value);
+                debug_printf("copied command...\n");
             }
             else if (strcmp(action, "returncode") == 0)
             {
@@ -571,8 +588,6 @@ void read_testfile(const char *input_file, size_t *count)
             }
         }
     }
-    fclose(file);
-    *count = runner_count;
 
     // User puts --- at the end of file
     if (!validate_runner(input))
@@ -585,12 +600,21 @@ void read_testfile(const char *input_file, size_t *count)
         debug_printf("found unran runner, running\n");
         if (input->name == NULL)
         {
+            debug_printf("did not find name, creating default\n");
             input->name = malloc(sizeof(char) * num_digits(runner_count));
-            itoa(runner_count, input->name, 10);
+            sprintf(input->name, "%zu", runner_count);
         }
         runner_count++;
-        execute_runner(input, &failures, &runner_count);
+        debug_printf("executing runner\n");
+        execute_runner(input, failures, runner_count);
+        debug_printf("executed runner\n");
+        debug_printf("destoying input\n");
+
+        // FIX: Ocassionally crashes here
+        printf("name: %s\n", input->name);
         destory_creal(input, 1);
+
+        debug_printf("destoyed input\n");
         printf("---\n");
         if (fail_count)
         {
@@ -603,35 +627,70 @@ void read_testfile(const char *input_file, size_t *count)
             free(failures);
         }
     }
+    fclose(file);
+    *count = runner_count;
 }
 
-void append_std_err_redir(char *cmd)
+char *append_std_err_redir(char *cmd)
 {
     size_t len = strlen(cmd);
+    printf("len %zu\n", len);
+    if (len < 4)
+    {
+        printf("less than 4\n");
+        cmd = realloc(cmd, strlen(cmd) + strlen(" 2>&1") + 1);
+        strcat(cmd, " 2>&1");
+        if (cmd == NULL)
+        {
+            exit(EXIT_FAILURE);
+        }
+        return cmd;
+    }
     const char *str = copy_sub_str_offset(cmd, len - 4);
     if (strcmp(str, "2>&1") != 0)
+    {
+        cmd = realloc(cmd, strlen(cmd) + strlen(" 2>&1") + 1);
+        if (cmd == NULL)
+        {
+            exit(EXIT_FAILURE);
+        }
         strcat(cmd, " 2>&1");
+        return cmd;
+    }
+    return cmd;
 }
 
-void prepend_shell(char *cmd, const char *prep)
+char *prepend_shell(char *cmd, const char *prep)
 {
-    size_t len = strlen(prep);
-    memmove(cmd + len, cmd, strlen(cmd) + 1);
-    memcpy(cmd, prep, len);
+    size_t len_pre = strlen(prep);
+    size_t len_cmd = strlen(cmd);
+    char *result = malloc(len_cmd + len_pre + 1);
+    if (result != NULL)
+    {
+        memmove(result + len_pre, cmd, len_cmd + 1);
+        memcpy(result, prep, len_pre);
+    }
+    return result;
 }
 
 void execute_command(Creal *creal)
 {
     FILE *fp;
-    char buffer[1024];
+    char buffer[1000];
     size_t line = 0;
-    append_std_err_redir(creal->command);
+    debug_printf("allocating command\n");
+    char *command = malloc(strlen(creal->command) + 1);
+    strcpy(command, creal->command);
+    debug_printf("copying string\n");
+    debug_printf("appending string...\n");
+    debug_printf("command: %s\n", command);
+    char *appended = append_std_err_redir(command);
+    debug_printf("appended string\n");
 #ifdef _WIN32
-    prepend_shell(creal->command, "cmd /c ");
-    fp = _popen(creal->command, "r"); // redirect to stderr
+    char *cmd = prepend_shell(appended, "cmd /c ");
+    fp = _popen(cmd, "r");
 #else
-    prepend_shell(creal->command, "sh -c ");
-    fp = popen(cmd, "r");
+    fp = popen(creal->command, "r");
 #endif
     if (fp == NULL)
     {
@@ -648,7 +707,7 @@ void execute_command(Creal *creal)
 #ifdef _WIN32
     creal->returncode = _pclose(fp);
 #else
-    creal->returncode = pclose(file);
+    creal->returncode = pclose(fp);
 #endif
     return;
 }

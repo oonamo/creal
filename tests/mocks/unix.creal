@@ -1,0 +1,5 @@
+#verbose
+#strict=false
+#debug
+command: ls -ll
+returncode: 1
