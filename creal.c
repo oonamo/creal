@@ -120,7 +120,6 @@ void destory_creal(Creal *creal, int can_destroy_self)
     {
         return;
     }
-    print_creal(creal);
     if (creal->output != NULL)
     {
         for (size_t i = 0; i < creal->lines; i++)
@@ -404,9 +403,8 @@ int execute_runner(Creal *runner, char **failures, size_t fail_count)
     actual->command = malloc(strlen(runner->command) + 1);
     strcpy(actual->command, runner->command);
     debug_printf("executing runner %s\n", runner->name);
-    printf("running command actual\n");
     execute_command(actual);
-    printf("ran command actual\n");
+    debug_printf("ran command actual\n");
     int res = compare_creals(actual, runner);
     debug_printf("destroying 'actual' runner\n");
     destory_creal(actual, 1);
@@ -502,7 +500,6 @@ void read_testfile(const char *input_file, size_t *count)
             int ok = validate_runner(input);
             if (!ok)
             {
-                print_creal(input);
                 if (flags & STRICT)
                 {
                     print_c(RED, "Bad runner. Make sure to fill all fields or "
@@ -517,6 +514,7 @@ void read_testfile(const char *input_file, size_t *count)
             execute_runner(input, failures, fail_count);
             destory_creal(input, 0);
             input = init_creal();
+            printf("---\n");
             continue;
         }
         // Indicates flag
@@ -555,13 +553,7 @@ void read_testfile(const char *input_file, size_t *count)
             }
             else if (strcmp(action, "command") == 0)
             {
-                /*input->command = (char *)trimmed_value;*/
                 debug_printf("allocating for command\n");
-                /*for (int i = 0; trimmed_value[i] != '\0'; i++)*/
-                /*{*/
-                /*    printf("not null\n");*/
-                /*    // Do nothing, just iterating*/
-                /*}*/
                 input->command = malloc(strlen((char *)trimmed_value) + 1);
                 debug_printf("allocated for command\n");
                 debug_printf("copying command...\n");
@@ -611,7 +603,7 @@ void read_testfile(const char *input_file, size_t *count)
         debug_printf("destoying input\n");
 
         // FIX: Ocassionally crashes here
-        printf("name: %s\n", input->name);
+        debug_printf("name: %s\n", input->name);
         destory_creal(input, 1);
 
         debug_printf("destoyed input\n");
@@ -634,10 +626,8 @@ void read_testfile(const char *input_file, size_t *count)
 char *append_std_err_redir(char *cmd)
 {
     size_t len = strlen(cmd);
-    printf("len %zu\n", len);
     if (len < 4)
     {
-        printf("less than 4\n");
         cmd = realloc(cmd, strlen(cmd) + strlen(" 2>&1") + 1);
         strcat(cmd, " 2>&1");
         if (cmd == NULL)

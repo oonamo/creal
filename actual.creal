@@ -1,4 +1,3 @@
-#debug
 #verbose
 #strict=false
 #fail_on_unexpected_newline=false

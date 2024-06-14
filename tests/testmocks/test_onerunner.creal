@@ -1,9 +1,9 @@
 #verbose
----
 name: test a single runner
 command: creal.exe ./tests/mocks/one_runner.creal
 returncode: 0
 stdout: |
+---
 assertions passed
-tested all creals
+---
         |
