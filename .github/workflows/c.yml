@@ -18,3 +18,15 @@ jobs:
       run: make
     - name: make tests
       run: make run_tests
+  windows_install:
+    defaults:
+      run:
+        shell: pwsh
+    runs-on: windows-latest
+    steps:
+    - name: make install
+      run: make install
+    - name: check install
+      run: |
+        cd ../
+        creal.exe ./creal/tests/testmocks/tests.creal
