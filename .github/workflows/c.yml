@@ -21,9 +21,12 @@ jobs:
   windows_install:
     runs-on: windows-latest
     steps:
-    - name: check cwd
+    - uses: actions/checkout@v4
+    - name: check pwd
       run: pwd
-    - name:
+    - name: list items
+      run: ls
+    - name: install
       run: ./install.bat
     - name: check install
       run: |

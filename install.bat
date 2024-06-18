@@ -12,6 +12,8 @@ move /Y "%~dp0\creal.exe" "%INSTALL_DIR%"
 
 rem Add to path
 setx PATH "%PATH%;%INSTALL_DIR%"
+set "PATH=%INSTALL_DIR%;%PATH%"
+
 echo %PATH%
 
 echo Installed creal.
