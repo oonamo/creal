@@ -367,8 +367,6 @@ int compare_creals(const Creal *actual, const Creal *expected)
                         size_t act_len = strlen(actual->output[i]);
                         size_t exp_len = strlen(expected->output[i]);
                         print_diff(expected, actual, i);
-                        verbose_printf("size of expected line: %zu\n", exp_len);
-                        verbose_printf("size of actual line: %zu\n", act_len);
                         failed |= 1;
                         break;
                     }

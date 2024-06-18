@@ -1,0 +1,12 @@
+#color_off
+name: diffs
+command: cat ./tests/mocks/expected.txt
+stdout: |
+1: Line 1
+2: Line 2
+3: Line 3
+4: Line 4
+5: Line 5
+6: Line 6
+        |
+---
