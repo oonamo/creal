@@ -26,8 +26,8 @@ jobs:
     steps:
     - name: check cwd
       run: pwd
-    - name: make install
-      run: make install
+    - name:
+      run: ./install.bat
     - name: check install
       run: |
         cd ../
