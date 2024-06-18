@@ -23,8 +23,6 @@ jobs:
     steps:
     - name: check cwd
       run: pwd
-    - name: ls
-      run: ls
     - name:
       run: ./install.bat
     - name: check install
