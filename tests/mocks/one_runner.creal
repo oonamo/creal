@@ -2,4 +2,4 @@
 name: test hello
 command: echo hello
 returncode: 0
-stdout: hello
+output: hello

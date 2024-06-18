@@ -1,7 +1,7 @@
 #color_off
 name: diffs
 command: type tests\mocks\expected.txt
-stdout: |
+output: |
 1: Line 1
 2: Line 2
 3: Line 3

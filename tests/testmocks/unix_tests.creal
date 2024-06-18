@@ -2,7 +2,7 @@
 name: test a single runner
 command: ./creal ./tests/mocks/one_runner.creal
 returncode: 0
-stdout: |
+output: |
 'test hello' passed.
         |
 ---
@@ -20,7 +20,7 @@ returncode: 256
 ---
 name: test diffs
 command: ./creal ./tests/mocks/unix_diff.creal
-stdout: |
+output: |
 Printing Diff:
 1: Line 1
 2: Line 2

@@ -471,7 +471,7 @@ void read_testfile(const char *input_file, size_t *count)
         fprintf(stderr, "failed to read input file %s\n", input_file);
         exit(EXIT_FAILURE);
     }
-    int is_stdout = 0;
+    int is_output = 0;
     size_t runner_count = 0;
     size_t fail_count = 0;
     char **failures = NULL;
@@ -485,11 +485,11 @@ void read_testfile(const char *input_file, size_t *count)
         // if still inside stdout: |
         //                         |
         // block
-        if (is_stdout)
+        if (is_output)
         {
             if (strcmp(trimmed_buf, "|") == 0)
             {
-                is_stdout = 0;
+                is_output = 0;
                 continue;
             }
             add_line(input, buffer);
@@ -550,11 +550,11 @@ void read_testfile(const char *input_file, size_t *count)
             size_t value_idx = first_non_empty_char(untrimmed);
             const char *trimmed_value =
                 trim(copy_sub_str_offset(untrimmed, value_idx));
-            if (strcmp(action, "stdout") == 0)
+            if (strcmp(action, "output") == 0)
             {
                 if (strcmp(trimmed_value, "|") == 0)
                 {
-                    is_stdout = 1;
+                    is_output = 1;
                 }
                 else
                     add_line(input, trimmed_value);
