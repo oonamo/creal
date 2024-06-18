@@ -741,7 +741,7 @@ void execute_command(Creal *creal)
 #ifdef _WIN32
     creal->returncode = _pclose(fp);
 #else
-    creal->returncode = pclose(fp);
+    creal->returncode = pclose(fp) / 256;
 #endif
     return;
 }

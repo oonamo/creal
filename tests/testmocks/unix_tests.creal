@@ -8,7 +8,7 @@ output: |
 ---
 name: test invalid runner
 command: ./creal ./tests/mocks/invalid.creal
-returncode: 256
+returncode: 1
 ---
 name: test non terminating runner w/o strict
 command: ./creal ./tests/mocks/non_terminating.creal
@@ -16,7 +16,7 @@ returncode: 0
 ---
 name: test non terminating runner w/ strict
 command: ./creal ./tests/mocks/non_terminating_strict.creal
-returncode: 256
+returncode: 1
 ---
 name: test diffs
 command: ./creal ./tests/mocks/unix_diff.creal
