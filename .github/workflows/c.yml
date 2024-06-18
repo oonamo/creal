@@ -24,6 +24,8 @@ jobs:
         shell: pwsh
     runs-on: windows-latest
     steps:
+    - name: check cwd
+      run: pwd
     - name: make install
       run: make install
     - name: check install
