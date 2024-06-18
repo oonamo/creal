@@ -9,7 +9,7 @@ if not exist "%INSTALL_DIR%\" (
     mkdir "%INSTALL_DIR%"
 )
 
-if not exists "%~dp0creal.exe" make build
+make build
 
 rem Copy executable
 echo Installing at "%INSTALL_DIR%\"
