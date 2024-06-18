@@ -24,6 +24,11 @@ jobs:
     - uses: actions/checkout@v4
     - name: install creal
       run: ./install.bat
+    - name: refreshenv
+      run: |
+       $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") +
+                    ";" +
+                  [System.Environment]::GetEnvironmentVariable("Path","User")
     - name: check install
       run: |
         cd ../
