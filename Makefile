@@ -14,6 +14,7 @@ clang_debug:
 	@ clang ./creal.c -g -fsanitize=address -o creal.exe
 run_tests: build
 	@ echo "<== Running Tests"
+	@ echo $(test_file)
 	@ ./creal $(test_file)
 install: build
 	@ install.bat
