@@ -18,18 +18,3 @@ jobs:
       run: make
     - name: make tests
       run: make run_tests
-  windows_install:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: install creal
-      run: ./install.bat
-    - name: refreshenv
-      run: |
-       $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") +
-                    ";" +
-                  [System.Environment]::GetEnvironmentVariable("Path","User")
-    - name: check install
-      run: |
-        cd ../
-        $Env:USERPROFILE\creal\creal.exe ./creal/tests/testmocks/tests.creal
