@@ -26,7 +26,7 @@ if errorlevel 1 (
     rem Append the NEW_PATH to the current PATH
     set "INSTALL_DIR=%CURRENT_PATH%;%INSTALL_DIR%"
     rem Update the registry with the new PATH
-    reg add HKCU\Environment /v Path /t REG_EXPAND_SZ /d "%INSTALL_DIR%" /f
+    reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Enviroment" /v Path /t REG_EXPAND_SZ /d "%INSTALL_DIR%" /f
     rem Display a message indicating success
     echo Install path has been added to the user PATH variable.
 ) else (
