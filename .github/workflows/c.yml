@@ -19,9 +19,6 @@ jobs:
     - name: make tests
       run: make run_tests
   windows_install:
-    defaults:
-      run:
-        shell: pwsh
     runs-on: windows-latest
     steps:
     - name: check cwd
