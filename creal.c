@@ -231,9 +231,16 @@ void add_line(Creal *creal, const char *line)
         exit(1);
     }
     if (flags & TRIM_COMMAND_OUTPUT)
-        creal->output[creal->lines] = trim(strdup(line));
+    {
+        char *trimmed_line = trim(strdup(line));
+        creal->output[creal->lines] = malloc(strlen(trimmed_line) + 1);
+        strcpy(creal->output[creal->lines], trimmed_line);
+    }
     else
-        creal->output[creal->lines] = strdup(line);
+    {
+        creal->output[creal->lines] = malloc(strlen(line) + 1);
+        strcpy(creal->output[creal->lines], line);
+    }
     if (creal->output[creal->lines] == NULL)
     {
         fprintf(stderr, "Failed to allocate memory in lines\n");
@@ -291,7 +298,7 @@ void print_diff(const Creal *expected, const Creal *actual,
         }
         else
         {
-            print_c(GREEN, "actual has new line >>>\n");
+            print_c(GREEN, ">>>\n");
         }
         if (line < actual->lines)
         {
@@ -363,6 +370,7 @@ int compare_creals(const Creal *actual, const Creal *expected)
                         verbose_printf("size of expected line: %zu\n", exp_len);
                         verbose_printf("size of actual line: %zu\n", act_len);
                         failed |= 1;
+                        break;
                     }
                     else
                     {

@@ -65,9 +65,15 @@ char *ltrim(char *s)
 char *rtrim(char *s)
 {
     char *back = s + strlen(s);
-    while (isspace(*--back))
-        ;
-    *(back + 1) = '\0';
+    // buffer underflow
+    /*while (isspace(*--back))*/
+    /*    ;*/
+    /**(back + 1) = '\0';*/
+    while (back > s && isspace(*(back - 1)))
+        back--;
+
+    *back = '\0';
+
     return s;
 }
 
