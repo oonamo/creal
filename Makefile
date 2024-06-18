@@ -1,3 +1,4 @@
+
 build:
 	echo "<== GCC Build"
 	gcc ./creal.c -o creal
@@ -10,3 +11,5 @@ clang_debug:
 run_tests: build
 	echo "<== Running Tests"
 	./creal ./tests/testmocks/test_onerunner.creal
+install: build
+	install.bat

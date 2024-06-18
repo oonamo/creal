@@ -1,5 +1,6 @@
 #ifndef CREAL_H
 #define CREAL_H
+#include "funcs.h"
 #include <stdint.h>
 #include <stdlib.h>
 typedef struct
@@ -21,19 +22,28 @@ typedef enum
     VERBOSE = (1 << 4),
     COLOR_OFF = (1 << 5),
     DEBUG = (1 << 6),
+    APPEND_RELATIVE = (1 << 7),
 } Flags;
 
 Creal *init_creal();
+void print_c(COLOR c, const char *fmt, ...);
+void verbose_printf(const char *fmt, ...);
+void verbose_print_c(COLOR c, const char *fmt, ...);
+void debug_print_c(COLOR c, const char *fmt, ...);
+void debug_printf(const char *fmt, ...);
 void destory_creal(Creal *creal, int can_destroy_self);
+int flag_is_true(const char *value, int fallback);
+int parse_flag(const char *unparsed_flag);
 void add_line(Creal *creal, const char *line);
+void print_flags();
 void comapre_creals(const Creal *actual, const Creal *expected);
-void read_testfile(const char *input_file, size_t *count);
 int execute_runner(Creal *runner, char **failures, size_t fail_count);
 int validate_runner(const Creal *creal);
 void add_to_failure(char **failures, Creal *input, size_t fail_count);
+void read_testfile(const char *input_file, size_t *count);
 char *append_std_err_redir(char *cmd);
-void execute_command(Creal *ouput);
+char *prepend_shell(char *cmd, const char *prep);
 void print_creal(Creal *creal);
-void print_flags();
+void execute_command(Creal *ouput);
 
 #endif

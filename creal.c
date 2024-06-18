@@ -43,7 +43,6 @@ void verbose_print_c(COLOR c, const char *fmt, ...)
 {
     if (flags & VERBOSE)
     {
-        // TODO: Figure out how to redirect this to verbose_printf
         if (flags & COLOR_OFF)
         {
             va_list args;
@@ -67,7 +66,6 @@ void debug_print_c(COLOR c, const char *fmt, ...)
 {
     if (flags & DEBUG)
     {
-        // TODO: Figure out how to redirect this to verbose_printf
         if (flags & COLOR_OFF)
         {
             va_list args;
@@ -192,6 +190,12 @@ int parse_flag(const char *unparsed_flag)
     else if (strcmp(flag, "debug") == 0)
     {
         e_flag = DEBUG;
+        debug_print_c(CYAN, "found flag 'debug'\n");
+    }
+    else if (strcmp(flag, "append_relative") == 0)
+    {
+        e_flag = APPEND_RELATIVE;
+        debug_print_c(CYAN, "found flag 'append_relative'\n");
     }
     if (e_flag == NONE)
     {

@@ -1,6 +1,6 @@
 #verbose
 name: test a single runner
-command: creal.exe ./tests/mocks/one_runner.creal
+command: creal ./tests/mocks/one_runner.creal
 returncode: 0
 stdout: |
 ---
