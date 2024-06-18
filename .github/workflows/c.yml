@@ -22,11 +22,7 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
-    - name: check pwd
-      run: pwd
-    - name: list items
-      run: ls
-    - name: install
+    - name: install creal
       run: ./install.bat
     - name: check install
       run: |
