@@ -1,0 +1,20 @@
+#strict
+name: test a single runner
+command: ./creal ./tests/mocks/one_runner.creal
+returncode: 0
+stdout: |
+'test hello' passed.
+        |
+---
+name: test invalid runner
+command: ./creal ./tests/mocks/invalid.creal
+returncode: 1
+---
+name: test non terminating runner w/o strict
+command: ./creal ./tests/mocks/non_terminating.creal
+returncode: 0
+---
+name: test non terminating runner w/ strict
+command: ./creal ./tests/mocks/non_terminating_strict.creal
+returncode: 1
+---

@@ -1,0 +1,4 @@
+name: non terminating
+returncode: 0
+command: echo running non terminating
+stdout: running non terminating

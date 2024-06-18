@@ -1,0 +1,4 @@
+#strict
+name: invalid runner
+returncode: 1
+---

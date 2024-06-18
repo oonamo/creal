@@ -1,0 +1,5 @@
+#strict
+name: strict non terminating
+command: echo strict non terminating
+stdout: strict non terminating
+returncode: 0

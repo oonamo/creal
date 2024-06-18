@@ -268,9 +268,48 @@ void print_flags()
     verbose_printf("\n");
 }
 
+void print_diff(const Creal *expected, const Creal *actual,
+                size_t start_of_diff)
+{
+    size_t line = 0;
+    print_c(BLUE, "Printing Diff:\n");
+    while (1)
+    {
+        if (line >= expected->lines && line > actual->lines)
+            break;
+        // print normal stdout, before their diff
+        if (line < start_of_diff)
+        {
+            verbose_printf("expected and actual: \n");
+            printf("%s\n", expected->output[line]);
+            line++;
+            continue;
+        }
+        if (line < expected->lines)
+        {
+            print_c(GREEN, "%s\n", expected->output[line]);
+        }
+        else
+        {
+            print_c(GREEN, "actual has new line >>>\n");
+        }
+        if (line < actual->lines)
+        {
+            print_c(RED, "%s\n", actual->output[line]);
+        }
+        else
+        {
+            print_c(RED, ">>>\n");
+        }
+        line++;
+    }
+    printf("\n");
+}
+
+// TODO: Clean up comaprison
 int compare_creals(const Creal *actual, const Creal *expected)
 {
-    int failed = 0, is_match = 0;
+    int failed = 0;
     verbose_print_c(YELLOW, "testing command '%s'\n", expected->command);
     verbose_print_c(YELLOW, "testing runner '%s'\n", expected->name);
     print_flags();
@@ -286,7 +325,7 @@ int compare_creals(const Creal *actual, const Creal *expected)
                         "what was expected:\n");
                 print_c(RED, "Expected %zu lines. Found %zu lines.\n",
                         expected->lines, actual->lines);
-                is_match++;
+                failed |= 1;
             }
             else
             {
@@ -304,50 +343,15 @@ int compare_creals(const Creal *actual, const Creal *expected)
         }
         for (size_t i = 0; i < num_lines; i++)
         {
-            if (i >= actual->lines)
+            if (i >= actual->lines || i >= expected->lines)
             {
-                if (isnewline_or_space(expected->output[i]) != 0)
-                {
-                    if (flags & FAIL_UNEXPECTED_NEWLINES)
-                    {
-                        print_c(RED,
-                                "expected has an extra new line or space\n");
-                        failed |= 1;
-                    }
-                }
-                else
-                {
-                    print_c(RED, "%s\n", expected->output[i]);
-                    failed |= 1;
-                }
-                continue;
+                print_diff(expected, actual, i);
+                failed |= 1;
+                break;
             }
-            if (i >= expected->lines)
+            else if (strcmp(actual->output[i], expected->output[i]) != 0)
             {
-                if (isnewline_or_space(actual->output[i]) != 0)
-                {
-                    if (flags & FAIL_UNEXPECTED_NEWLINES)
-                    {
-                        print_c(RED, "ouput has an extra new line or space\n");
-                        failed |= 1;
-                    }
-                    else
-                    {
-                        verbose_print_c(
-                            YELLOW,
-                            "Found an extra new line or space. Ignoring due to "
-                            "'fail_on_unexpected_newline' flag being active");
-                    }
-                }
-                else
-                {
-                    print_c(RED, "%s\n", actual->output[i]);
-                    failed |= 1;
-                }
-                continue;
-            }
-            if (strcmp(actual->output[i], expected->output[i]) != 0)
-            {
+                // print diff
                 if (flags & TRIM_COMMAND_OUTPUT)
                 {
                     if (strcmp(trim(actual->output[i]),
@@ -355,12 +359,8 @@ int compare_creals(const Creal *actual, const Creal *expected)
                     {
                         size_t act_len = strlen(actual->output[i]);
                         size_t exp_len = strlen(expected->output[i]);
-                        print_c(RED, "Lines %zu differ\n", i);
-                        print_c(RED, "expected:\n");
-                        printf("%s\n", expected->output[i]);
+                        print_diff(expected, actual, i);
                         verbose_printf("size of expected line: %zu\n", exp_len);
-                        print_c(RED, "actual:\n");
-                        printf("%s\n", actual->output[i]);
                         verbose_printf("size of actual line: %zu\n", act_len);
                         failed |= 1;
                     }
@@ -368,34 +368,30 @@ int compare_creals(const Creal *actual, const Creal *expected)
                     {
                         verbose_print_c(
                             YELLOW,
-                            "Found an extra new line or space. Ignoring due to "
-                            "'fail_on_unexpected_newline' flag being active");
+                            "Found an extra new line or space. Ignoring due "
+                            "to 'fail_on_unexpected_newline' flag being "
+                            "active");
                     }
                 }
-            }
-            else
-            {
-                verbose_printf("%s\n", actual->output[i]);
             }
         }
     }
     if (actual->returncode != expected->returncode)
     {
-        fprintf(stderr, "return codes are diffrent\n");
-        printf("expected:\n");
+        print_c(RED, "return codes are diffrent\n");
+        print_c(RED, "expected:\n");
         printf("\t%d\n", expected->returncode);
         printf("actual:\n");
         printf("\t%d\n", actual->returncode);
-        is_match++;
         failed |= 1;
     }
     if (failed == 1)
     {
-        print_c(RED, "assertions failed\n");
+        print_c(RED, "'%s' failed.\n", expected->name);
     }
     else
     {
-        print_c(GREEN, "assertions passed\n");
+        print_c(GREEN, "'%s' passed.\n", expected->name);
     }
     return failed;
 }
@@ -438,7 +434,9 @@ int validate_runner(const Creal *creal)
     int ok = 0;
     ok |= creal->command != NULL;
     if (flags & STRICT)
+    {
         ok |= creal->output != NULL;
+    }
     return ok;
 }
 
@@ -471,7 +469,7 @@ void read_testfile(const char *input_file, size_t *count)
     size_t runner_count = 0;
     size_t fail_count = 0;
     char **failures = NULL;
-    printf("---\n");
+    verbose_printf("---\n");
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
         char *copy = strdup(buffer);
@@ -518,7 +516,7 @@ void read_testfile(const char *input_file, size_t *count)
             execute_runner(input, failures, fail_count);
             destory_creal(input, 0);
             input = init_creal();
-            printf("---\n");
+            verbose_printf("---\n");
             continue;
         }
         // Indicates flag
@@ -593,6 +591,14 @@ void read_testfile(const char *input_file, size_t *count)
     // User removes --- at the end of file
     else
     {
+        if (flags & STRICT)
+        {
+            print_c(RED, "found runner at the end of file, but it is never "
+                         "terminated.\n");
+            free(input);
+            fclose(file);
+            exit(EXIT_FAILURE);
+        }
         debug_printf("found unran runner, running\n");
         if (input->name == NULL)
         {
@@ -611,7 +617,7 @@ void read_testfile(const char *input_file, size_t *count)
         destory_creal(input, 1);
 
         debug_printf("destoyed input\n");
-        printf("---\n");
+        verbose_printf("---\n");
         if (fail_count)
         {
             print_c(RED, "failed runner: \n");
@@ -717,7 +723,7 @@ void print_creal(Creal *creal)
     if (creal->name)
         printf("name: %s\n", creal->name);
     for (size_t i = 0; i < creal->lines; i++)
-        printf("%s", creal->output[i]);
+        printf("%s\n", creal->output[i]);
     printf("\n");
 }
 

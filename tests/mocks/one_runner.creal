@@ -1,5 +1,5 @@
 #color_off
+name: test hello
 command: echo hello
 returncode: 0
 stdout: hello
-name: test hello
