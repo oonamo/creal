@@ -27,4 +27,4 @@ jobs:
     - name: run install script
       run: ./install.bat
     - name: check installation
-      run: & "$Env:USERPROFILE\creal\creal.exe" ./tests/testmocks/tests.creal
+      run: '& "$Env:USERPROFILE\creal\creal.exe" ./tests/testmocks/tests.creal'
