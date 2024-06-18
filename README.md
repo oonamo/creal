@@ -35,14 +35,14 @@ make build
 #strict
 name: example
 command: echo "this is an example"
-stdout: "this is an example"
+output: "this is an example"
 returncode: 0
 ---
 #verbose
 name: cat log file
 command: cat ./weather.log
-stdout: |
-starting weater station...
+output: |
+starting weather station...
 could not connect to weather api, aborting.
         |
 returncode: 1
