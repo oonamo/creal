@@ -1,7 +1,0 @@
-#verbose
-#strict=false
-#fail_on_unexpected_newline=false
-command: echo hello
-stdout: hello
-returncode: 0
----
