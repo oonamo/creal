@@ -18,3 +18,13 @@ jobs:
       run: make
     - name: make tests
       run: make run_tests
+  windows_install:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: make creal
+      run: make build
+    - name: run install script
+      run: ./install.bat
+    - name: check installation
+      run: & "$Env:USERPROFILE\creal\creal.exe" ./tests/testmocks/tests.creal

@@ -15,18 +15,15 @@ echo Installing at "%INSTALL_DIR%\"
 copy /Y "%~dp0creal.exe" "%INSTALL_DIR%\"
 
 rem Add to path
-for /f "tokens=2*" %%a in ('reg query HKCU\Environment /v Path ^| find "Path"') do (
+for /f "tokens=2*" %%a in ('reg query HKEY_CURRENT_USER\Environment /v Path ^| find "Path"') do (
     set "CURRENT_PATH=%%b"
 )
 
 rem Check if the NEW_PATH already exists in the current PATH
 echo %CURRENT_PATH% | find /I "%INSTALL_DIR%;" > nul
 if errorlevel 1 (
-    rem Append the NEW_PATH to the current PATH
     set "INSTALL_DIR=%CURRENT_PATH%;%INSTALL_DIR%"
-    rem Update the registry with the new PATH
-    reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Enviroment" /v Path /t REG_EXPAND_SZ /d "%INSTALL_DIR%" /f
-    rem Display a message indicating success
+    reg add HKEY_CURRENT_USER\Environment /v Path /t REG_EXPAND_SZ/ d "%INSTALL_DIR%" /f
     echo Install path has been added to the user PATH variable.
 ) else (
     echo Install path already exists in the user PATH variable.
