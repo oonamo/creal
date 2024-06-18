@@ -32,4 +32,4 @@ jobs:
     - name: check install
       run: |
         cd ../
-        creal.exe ./creal/tests/testmocks/tests.creal
+        $Env:USERPROFILE\creal\creal.exe ./creal/tests/testmocks/tests.creal

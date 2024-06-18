@@ -15,24 +15,24 @@ rem Copy executable
 echo Installing at "%INSTALL_DIR%\"
 copy /Y "%~dp0creal.exe" "%INSTALL_DIR%\"
 
-rem Add to path
-for /f "tokens=2*" %%a in ('reg query HKCU\Environment /v Path ^| find "Path"') do (
-    set "CURRENT_PATH=%%b"
+set KEY_NAME="HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+set VALUE_NAME=Path
+
+FOR /F "usebackq skip=4 tokens=1-3" %%A IN (`REG QUERY %KEY_NAME% /v %VALUE_NAME% 2^>nul`) DO (
+  set ValueName=%%A
+  set ValueValue=%%C
 )
 
-rem Check if the NEW_PATH already exists in the current PATH
-echo %CURRENT_PATH% | find /I "%INSTALL_DIR%;" > nul
-if errorlevel 1 (
-    rem Append the NEW_PATH to the current PATH
-    set "INSTALL_DIR=%CURRENT_PATH%;%INSTALL_DIR%"
-    rem Update the registry with the new PATH
-    reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Enviroment" /v Path /t REG_EXPAND_SZ /d "%INSTALL_DIR%" /f
-    rem Display a message indicating success
-    echo Install path has been added to the user PATH variable.
+if defined ValueName (
+
+  set "newPath=%INSTALL_DIR%;C:\bin"
+
+  reg.exe ADD "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path /t REG_EXPAND_SZ /d "%newPath%" /f
+
+  set "path=%path%;%INSTALL_DIR%"
+
 ) else (
-    echo Install path already exists in the user PATH variable.
+    @echo %KEY_NAME%\%VALUE_NAME% not found.
 )
-
-endlocal
 
 echo Installed creal.
