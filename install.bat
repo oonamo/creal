@@ -21,7 +21,7 @@ for /f "tokens=2*" %%a in ('reg query HKCU\Environment /v Path ^| find "Path"') 
 )
 
 rem Check if the NEW_PATH already exists in the current PATH
-echo %CURRENT_PATH% | find /I "%NEW_PATH%;" > nul
+echo %CURRENT_PATH% | find /I "%INSTALL_DIR%;" > nul
 if errorlevel 1 (
     rem Append the NEW_PATH to the current PATH
     set "INSTALL_DIR=%CURRENT_PATH%;%INSTALL_DIR%"
