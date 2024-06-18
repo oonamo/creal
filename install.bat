@@ -2,7 +2,7 @@
 setlocal
 
 rem define installation directory
-set INSTALL_DIR=%APPDATA%\creal
+set INSTALL_DIR=%USERPROFILE%\creal
 
 if not exist "%INSTALL_DIR%\" (
     echo making folder at "%INSTALL_DIR%"
@@ -10,7 +10,7 @@ if not exist "%INSTALL_DIR%\" (
 )
 
 rem Copy executable
-echo Installing at "%INSTALL_DIR%"
+echo Installing at "%INSTALL_DIR%\"
 move /Y "%~dp0\creal.exe" "%INSTALL_DIR%"
 
 rem Add to path
