@@ -1,10 +1,11 @@
 #strict
-name: test a single runner
+name: test a single runner [[! this is a comment !]]
 command: creal ./tests/mocks/one_runner.creal
 returncode: 0
 output: |
 'test hello' passed.
         |
+
 ---
 name: test invalid runner
 command: creal ./tests/mocks/invalid.creal

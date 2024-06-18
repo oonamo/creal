@@ -134,3 +134,13 @@ int num_digits(size_t num)
         return 9;
     return 10;
 }
+
+int get_substr_index(const char *str, const char *sub_str)
+{
+    char *result = strstr(str, sub_str);
+    if (result)
+    {
+        return result - str;
+    }
+    return -1;
+}

@@ -6,6 +6,8 @@
 
 #define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT)
 static uint32_t flags = DEFAULT_FLAGS;
+static const char *COMMENT_STR_LEFT = "[[!";
+static const char *COMMENT_STR_RIGHT = "!]]";
 
 void print_c(COLOR c, const char *fmt, ...)
 {
@@ -93,6 +95,24 @@ void debug_printf(const char *fmt, ...)
         va_start(args, fmt);
         vprintf(fmt, args);
         va_end(args);
+    }
+}
+
+void remove_comment(char *line)
+{
+    int lhs = get_substr_index(line, COMMENT_STR_LEFT);
+    int rhs = get_substr_index(line, COMMENT_STR_RIGHT);
+    if (lhs != -1 && rhs != -1)
+    {
+        debug_printf("found comment at idx %d, removing\n", lhs);
+
+        // HACK: avoid strncpy param overlap
+        char *copy = strdup(line);
+        // assume that size is sufficient
+        strncpy(line, copy, lhs);
+
+        line[lhs] = '\0';
+        debug_printf("new string: %s\n", line);
     }
 }
 
@@ -479,9 +499,17 @@ void read_testfile(const char *input_file, size_t *count)
     while (fgets(buffer, sizeof(buffer), file) != NULL)
     {
         char *copy = strdup(buffer);
-        char *trimmed_buf = trim(buffer);
+        remove_comment(copy);
+        debug_printf("old string: %s, new string: %s\n", buffer, copy);
+        char *trimmed_buf = trim(copy);
         char first_char = first_non_empty_char(trimmed_buf);
-        size_t action_idx = index_of_char(buffer, ':');
+
+        // if its empty line
+        if (first_char == -1 && !is_output)
+        {
+            continue;
+        }
+        size_t action_idx = index_of_char(copy, ':');
         // if still inside stdout: |
         //                         |
         // block
@@ -526,7 +554,7 @@ void read_testfile(const char *input_file, size_t *count)
             continue;
         }
         // Indicates flag
-        else if (buffer[first_char] == '#')
+        else if (copy[first_char] == '#')
         {
             char *unparsed = str_tolower(&trimmed_buf[first_char + 1]);
             int res = parse_flag(unparsed);
@@ -545,8 +573,8 @@ void read_testfile(const char *input_file, size_t *count)
         // indicates action
         else if (action_idx != -1)
         {
-            char *action = copy_sub_str(buffer, ':');
-            const char *untrimmed = copy_sub_str_offset(buffer, action_idx + 1);
+            char *action = copy_sub_str(copy, ':');
+            const char *untrimmed = copy_sub_str_offset(copy, action_idx + 1);
             size_t value_idx = first_non_empty_char(untrimmed);
             const char *trimmed_value =
                 trim(copy_sub_str_offset(untrimmed, value_idx));

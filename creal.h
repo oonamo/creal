@@ -47,5 +47,6 @@ void print_creal(Creal *creal);
 void execute_command(Creal *ouput);
 void print_diff(const Creal *expected, const Creal *actual,
                 size_t start_of_diff);
+void remove_comment(char *line);
 
 #endif

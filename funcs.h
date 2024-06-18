@@ -17,8 +17,10 @@ typedef enum COLOR
 size_t first_non_empty_char(const char *str);
 
 void print_bits(uint32_t bits);
+
 char *str_tolower(char *str);
 
 int isnewline_or_space(char *str);
 
+int get_substr_index(const char *str, const char *sub_str);
 #endif
