@@ -1,4 +1,4 @@
-@echo off
+@echo on
 setlocal
 
 rem define installation directory
