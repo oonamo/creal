@@ -1,5 +1,4 @@
 #strict
-#always_show_output
 name: test a single runner [[! this is a comment !]]
 command: creal ./tests/mocks/one_runner.creal
 returncode: 0
