@@ -25,6 +25,16 @@ typedef enum
     APPEND_RELATIVE = (1 << 7),
 } Flags;
 
+typedef enum
+{
+    EMPTY,
+    SINGLE_LINE_OUTPUT,
+    MULTI_LINE_OUTPUT,
+    COMMAND,
+    RETURNCODE,
+    NAME,
+} Action;
+
 Creal *init_creal();
 void print_c(COLOR c, const char *fmt, ...);
 void verbose_printf(const char *fmt, ...);
@@ -34,6 +44,7 @@ void debug_printf(const char *fmt, ...);
 void destory_creal(Creal *creal, int can_destroy_self);
 int flag_is_true(const char *value, int fallback);
 int parse_flag(const char *unparsed_flag);
+Action parse_action(Creal *input, const char *action, const char *value);
 void add_line(Creal *creal, const char *line);
 void print_flags();
 void comapre_creals(const Creal *actual, const Creal *expected);

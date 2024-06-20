@@ -9,6 +9,7 @@ static uint32_t flags = DEFAULT_FLAGS;
 static const char *COMMENT_STR_LEFT = "[[!";
 static const char *COMMENT_STR_RIGHT = "!]]";
 
+/// Prints colored output to console.
 void print_c(COLOR c, const char *fmt, ...)
 {
     if (flags & COLOR_OFF)
@@ -98,6 +99,9 @@ void debug_printf(const char *fmt, ...)
     }
 }
 
+/// Checks if comment contains both COMMENT_STR_LEFT and COMMENT_STR_RIGHT
+/// if so, removes everything from the beginning of COMMENT_STR_LEFT to the
+/// right
 void remove_comment(char *line)
 {
     int lhs = get_substr_index(line, COMMENT_STR_LEFT);
@@ -239,6 +243,44 @@ int parse_flag(const char *unparsed_flag)
         }
     }
     return 0;
+}
+
+Action parse_action(Creal *input, const char *action, const char *value)
+{
+    Action creal_act = EMPTY;
+    if (strcmp(action, "output") == 0)
+    {
+        if (strcmp(value, "|") == 0)
+        {
+            creal_act = MULTI_LINE_OUTPUT;
+        }
+        else
+        {
+            creal_act = SINGLE_LINE_OUTPUT;
+            add_line(input, value);
+        }
+    }
+    else if (strcmp(action, "command") == 0)
+    {
+        creal_act = COMMAND;
+        debug_printf("allocating for command\n");
+        input->command = malloc(strlen((char *)value) + 1);
+        debug_printf("allocated for command\n");
+        debug_printf("copying command...\n");
+        strcpy(input->command, value);
+        debug_printf("copied command...\n");
+    }
+    else if (strcmp(action, "returncode") == 0)
+    {
+        creal_act = RETURNCODE;
+        input->returncode = atoi(value);
+    }
+    else if (strcmp(action, "name") == 0)
+    {
+        creal_act = NAME;
+        input->name = (char *)value;
+    }
+    return creal_act;
 }
 
 void add_line(Creal *creal, const char *line)
@@ -578,33 +620,8 @@ void read_testfile(const char *input_file, size_t *count)
             size_t value_idx = first_non_empty_char(untrimmed);
             const char *trimmed_value =
                 trim(copy_sub_str_offset(untrimmed, value_idx));
-            if (strcmp(action, "output") == 0)
-            {
-                if (strcmp(trimmed_value, "|") == 0)
-                {
-                    is_output = 1;
-                }
-                else
-                    add_line(input, trimmed_value);
-            }
-            else if (strcmp(action, "command") == 0)
-            {
-                debug_printf("allocating for command\n");
-                input->command = malloc(strlen((char *)trimmed_value) + 1);
-                debug_printf("allocated for command\n");
-                debug_printf("copying command...\n");
-                strcpy(input->command, trimmed_value);
-                debug_printf("copied command...\n");
-            }
-            else if (strcmp(action, "returncode") == 0)
-            {
-                input->returncode = atoi(trimmed_value);
-            }
-            else if (strcmp(action, "name") == 0)
-            {
-                input->name = (char *)trimmed_value;
-            }
-            else
+            Action act = parse_action(input, action, trimmed_value);
+            if (act == EMPTY)
             {
                 if (flags & STRICT)
                 {
@@ -614,6 +631,46 @@ void read_testfile(const char *input_file, size_t *count)
                 print_c(YELLOW, "invalid action: '%s'. Continuing...\n",
                         action);
             }
+            if (act == MULTI_LINE_OUTPUT)
+            {
+                is_output = 1;
+            }
+            /*if (strcmp(action, "output") == 0)*/
+            /*{*/
+            /*    if (strcmp(trimmed_value, "|") == 0)*/
+            /*    {*/
+            /*        is_output = 1;*/
+            /*    }*/
+            /*    else*/
+            /*        add_line(input, trimmed_value);*/
+            /*}*/
+            /*else if (strcmp(action, "command") == 0)*/
+            /*{*/
+            /*    debug_printf("allocating for command\n");*/
+            /*    input->command = malloc(strlen((char *)trimmed_value) + 1);*/
+            /*    debug_printf("allocated for command\n");*/
+            /*    debug_printf("copying command...\n");*/
+            /*    strcpy(input->command, trimmed_value);*/
+            /*    debug_printf("copied command...\n");*/
+            /*}*/
+            /*else if (strcmp(action, "returncode") == 0)*/
+            /*{*/
+            /*    input->returncode = atoi(trimmed_value);*/
+            /*}*/
+            /*else if (strcmp(action, "name") == 0)*/
+            /*{*/
+            /*    input->name = (char *)trimmed_value;*/
+            /*}*/
+            /*else*/
+            /*{*/
+            /*    if (flags & STRICT)*/
+            /*    {*/
+            /*        print_c(RED, "invalid action: '%s'. Fatal\n", action);*/
+            /*        exit(EXIT_FAILURE);*/
+            /*    }*/
+            /*    print_c(YELLOW, "invalid action: '%s'. Continuing...\n",*/
+            /*            action);*/
+            /*}*/
         }
     }
 

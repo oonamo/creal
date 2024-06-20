@@ -14,8 +14,8 @@ rem Copy executable
 echo Installing at "%INSTALL_DIR%\"
 copy /Y "%~dp0creal.exe" "%INSTALL_DIR%\"
 
-rem Add to path
-set "INSTALL_DIR=%CURRENT_PATH%;%INSTALL_DIR%"
+rem TODO: Fix this not adding to path.
+set "INSTALL_DIR=%PATH%;%INSTALL_DIR%"
 reg add HKEY_CURRENT_USER\Environment /v Path /t REG_EXPAND_SZ /d "%INSTALL_DIR%" /f
 
 echo Installed creal.
