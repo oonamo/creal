@@ -23,6 +23,7 @@ typedef enum
     COLOR_OFF = (1 << 5),
     DEBUG = (1 << 6),
     APPEND_RELATIVE = (1 << 7),
+    ALWAYS_SHOW_OUTPUT = (1 << 8),
 } Flags;
 
 typedef enum

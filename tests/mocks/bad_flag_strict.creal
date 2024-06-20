@@ -1,0 +1,8 @@
+#strict [[! Important, set before bad flag !]]
+#verbose
+#bad_flag
+name: bad flag on strict
+command: echo hello
+ouput: hello
+returncode: 1
+---

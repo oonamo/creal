@@ -186,6 +186,7 @@ int parse_flag(const char *unparsed_flag)
     char *value = copy_sub_str_offset(unparsed_flag, value_idx + 1);
     int flag_on = flag_is_true(value, -1);
     Flags e_flag = NONE;
+
     if (strcmp(flag, "fail_on_unexpected_newline") == 0)
     {
         e_flag = FAIL_UNEXPECTED_NEWLINES;
@@ -221,9 +222,15 @@ int parse_flag(const char *unparsed_flag)
         e_flag = APPEND_RELATIVE;
         debug_print_c(CYAN, "found flag 'append_relative'\n");
     }
+    else if (strcmp(flag, "always_show_output") == 0)
+    {
+        e_flag = ALWAYS_SHOW_OUTPUT;
+        debug_print_c(CYAN, "found flag 'always_show_output'\n");
+    }
+
     if (e_flag == NONE)
     {
-        debug_print_c(RED, "found no valid flag for vvalue '%s'\n", flag);
+        debug_print_c(RED, "found no valid flag for value '%s'\n", flag);
     }
     if (flag_on == 1)
     {
@@ -242,7 +249,7 @@ int parse_flag(const char *unparsed_flag)
             return -1;
         }
     }
-    return 0;
+    return e_flag == NONE ? -1 : 0;
 }
 
 Action parse_action(Creal *input, const char *action, const char *value)
@@ -375,8 +382,26 @@ void print_diff(const Creal *expected, const Creal *actual,
     printf("\n");
 }
 
-// TODO: Clean up comaprison
-int compare_creals(const Creal *actual, const Creal *expected)
+void print_output(const Creal *expected, const Creal *actual)
+{
+    if (flags & ALWAYS_SHOW_OUTPUT)
+    {
+        print_c(BLUE, "Expected:\n");
+        for (size_t i = 0; i < expected->lines; i++)
+        {
+            printf("%s\n", expected->output[i]);
+        }
+        print_c(BLUE, "Actual:\n");
+        for (size_t i = 0; i < actual->lines; i++)
+        {
+            printf("%s\n", actual->output[i]);
+        }
+    }
+}
+
+// TODO: Swap actual and expected to be consistent with other functions
+/*int compare_creals(const Creal *actual, const Creal *expected)*/
+int compare_creals(const Creal *expected, const Creal *actual)
 {
     int failed = 0;
     verbose_print_c(YELLOW, "testing command '%s'\n", expected->command);
@@ -461,6 +486,7 @@ int compare_creals(const Creal *actual, const Creal *expected)
     {
         print_c(GREEN, "'%s' passed.\n", expected->name);
     }
+    print_output(expected, actual);
     return failed;
 }
 
@@ -473,7 +499,7 @@ int execute_runner(Creal *runner, char **failures, size_t fail_count)
     debug_printf("executing runner %s\n", runner->name);
     execute_command(actual);
     debug_printf("ran command actual\n");
-    int res = compare_creals(actual, runner);
+    int res = compare_creals(runner, actual);
     debug_printf("destroying 'actual' runner\n");
     destory_creal(actual, 1);
     debug_printf("destroyed 'actual' runner\n");
@@ -604,7 +630,7 @@ void read_testfile(const char *input_file, size_t *count)
             {
                 if (flags & STRICT)
                 {
-                    print_c(RED, "did not find value %s\n", unparsed);
+                    print_c(RED, "did not find value/flag %s\n", unparsed);
                     exit(EXIT_FAILURE);
                 }
                 verbose_print_c(YELLOW, "flag '%s' does not exist.\n",
