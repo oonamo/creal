@@ -2,17 +2,16 @@
 #define FUNCS_H
 #include <stdint.h>
 #include <stdlib.h>
-typedef enum COLOR
-{
-    CLEAR = 0,
-    BLACK = 30,
-    RED = 31,
-    GREEN = 32,
-    YELLOW = 33,
-    BLUE = 34,
-    PURPLE = 35,
-    CYAN = 36,
-    WHITE = 37,
+typedef enum COLOR {
+  CLEAR = 0,
+  BLACK = 30,
+  RED = 31,
+  GREEN = 32,
+  YELLOW = 33,
+  BLUE = 34,
+  PURPLE = 35,
+  CYAN = 36,
+  WHITE = 37,
 } COLOR;
 size_t first_non_empty_char(const char *str);
 

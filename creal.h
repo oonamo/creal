@@ -1,39 +1,37 @@
 #ifndef CREAL_H
 #define CREAL_H
-#include "funcs.h"
 #include <stdint.h>
 #include <stdlib.h>
-typedef struct
-{
-    int returncode;
-    size_t lines;
-    char *command;
-    char **output;
-    char *name;
+
+#include "funcs.h"
+typedef struct {
+  int returncode;
+  size_t lines;
+  char *command;
+  char **output;
+  char *name;
 
 } Creal;
 
-typedef enum
-{
-    NONE = 0,
-    STRICT = (1 << 1),
-    FAIL_UNEXPECTED_NEWLINES = (1 << 2),
-    TRIM_COMMAND_OUTPUT = (1 << 3),
-    VERBOSE = (1 << 4),
-    COLOR_OFF = (1 << 5),
-    DEBUG = (1 << 6),
-    APPEND_RELATIVE = (1 << 7),
-    ALWAYS_SHOW_OUTPUT = (1 << 8),
+typedef enum {
+  NONE = 0,
+  STRICT = (1 << 1),
+  FAIL_UNEXPECTED_NEWLINES = (1 << 2),
+  TRIM_COMMAND_OUTPUT = (1 << 3),
+  VERBOSE = (1 << 4),
+  COLOR_OFF = (1 << 5),
+  DEBUG = (1 << 6),
+  APPEND_RELATIVE = (1 << 7),
+  ALWAYS_SHOW_OUTPUT = (1 << 8),
 } Flags;
 
-typedef enum
-{
-    EMPTY,
-    SINGLE_LINE_OUTPUT,
-    MULTI_LINE_OUTPUT,
-    COMMAND,
-    RETURNCODE,
-    NAME,
+typedef enum {
+  EMPTY,
+  SINGLE_LINE_OUTPUT,
+  MULTI_LINE_OUTPUT,
+  COMMAND,
+  RETURNCODE,
+  NAME,
 } Action;
 
 Creal *init_creal();
@@ -57,8 +55,7 @@ char *append_std_err_redir(char *cmd);
 char *prepend_shell(char *cmd, const char *prep);
 void print_creal(Creal *creal);
 void execute_command(Creal *ouput);
-void print_diff(const Creal *expected, const Creal *actual,
-                size_t start_of_diff);
+void print_diff(const Creal *expected, const Creal *actual, size_t start_of_diff);
 void remove_comment(char *line);
 
 #endif
