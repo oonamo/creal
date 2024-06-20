@@ -14,6 +14,9 @@
     - Handled through flags
 - Capture shell output for easy testing.
 
+## Usage
+See the [getting started](https://github.com/oonamo/creal/wiki) to get started.
+
 ## Support
 Tested on Windows 11 and Ubuntu.
 

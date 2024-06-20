@@ -5,6 +5,7 @@
 #include <string.h>
 
 #define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT)
+
 static uint32_t flags = DEFAULT_FLAGS;
 static const char *COMMENT_STR_LEFT = "[[!";
 static const char *COMMENT_STR_RIGHT = "!]]";
@@ -540,9 +541,8 @@ int validate_runner(const Creal *creal)
 /// ran until the multiline stdout is done. Delimited with 'stdout: |". To end,
 /// add '|' to a line with nothing else
 /// 2. Flags: Delimited with '#'s
-/// 3. Runner Seperators: seperated with '--'
+/// 3. Runner Seperators: seperated with '---'
 /// 3. Actions
-/// TODO: Dont store as an array
 void read_testfile(const char *input_file, size_t *count)
 {
     // get flags
@@ -599,7 +599,6 @@ void read_testfile(const char *input_file, size_t *count)
                 input->name =
                     malloc(sizeof(char) * num_digits(runner_count) + 1);
                 sprintf(input->name, "%zu", runner_count);
-                /*itoa(runner_count, input->name, 10);*/
             }
             int ok = validate_runner(input);
             if (!ok)
@@ -661,42 +660,6 @@ void read_testfile(const char *input_file, size_t *count)
             {
                 is_output = 1;
             }
-            /*if (strcmp(action, "output") == 0)*/
-            /*{*/
-            /*    if (strcmp(trimmed_value, "|") == 0)*/
-            /*    {*/
-            /*        is_output = 1;*/
-            /*    }*/
-            /*    else*/
-            /*        add_line(input, trimmed_value);*/
-            /*}*/
-            /*else if (strcmp(action, "command") == 0)*/
-            /*{*/
-            /*    debug_printf("allocating for command\n");*/
-            /*    input->command = malloc(strlen((char *)trimmed_value) + 1);*/
-            /*    debug_printf("allocated for command\n");*/
-            /*    debug_printf("copying command...\n");*/
-            /*    strcpy(input->command, trimmed_value);*/
-            /*    debug_printf("copied command...\n");*/
-            /*}*/
-            /*else if (strcmp(action, "returncode") == 0)*/
-            /*{*/
-            /*    input->returncode = atoi(trimmed_value);*/
-            /*}*/
-            /*else if (strcmp(action, "name") == 0)*/
-            /*{*/
-            /*    input->name = (char *)trimmed_value;*/
-            /*}*/
-            /*else*/
-            /*{*/
-            /*    if (flags & STRICT)*/
-            /*    {*/
-            /*        print_c(RED, "invalid action: '%s'. Fatal\n", action);*/
-            /*        exit(EXIT_FAILURE);*/
-            /*    }*/
-            /*    print_c(YELLOW, "invalid action: '%s'. Continuing...\n",*/
-            /*            action);*/
-            /*}*/
         }
     }
 
