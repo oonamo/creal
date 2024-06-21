@@ -96,7 +96,7 @@ void print_flags();
 void print_creal(Creal *creal);
 
 /* Creal Interperter */
-void read_testfile(const char *input_file, size_t *count);
+int read_testfile(const char *input_file, size_t *count);
 Action parse_action(Creal *input, const char *action, const char *value);
 int flag_is_true(const char *value, int fallback);
 int parse_flag(const char *unparsed_flag);

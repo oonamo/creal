@@ -455,7 +455,7 @@ int validate_runner(const Creal *creal)
 /// 2. Flags: Delimited with '#'s
 /// 3. Runner Seperators: seperated with '---'
 /// 3. Actions
-void read_testfile(const char *input_file, size_t *count)
+int read_testfile(const char *input_file, size_t *count)
 {
   // get flags
   char buffer[1024];
@@ -598,6 +598,7 @@ void read_testfile(const char *input_file, size_t *count)
   }
   fclose(file);
   *count = runner_count;
+  return runner_count == 0;
 }
 
 char *append_std_err_redir(char *cmd)
@@ -690,7 +691,7 @@ int main(int argc, char *argv[])
   }
   const char *test_file = argv[1];
   size_t runner_count = 0;
-  read_testfile(test_file, &runner_count);
+  int result = read_testfile(test_file, &runner_count);
   debug_printf("exited creal successfully.\n");
-  return 0;
+  return result;
 }
