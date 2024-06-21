@@ -1,6 +1,2 @@
-**.exe
 *.exe
-creal
-creal.exp
-creal.lib
-creal.pdb
+!bin/**
