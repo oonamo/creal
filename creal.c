@@ -198,35 +198,18 @@ int parse_flag(const char *unparsed_flag)
   int flag_on = flag_is_true(value, -1);
   Flags e_flag = NONE;
 
-  if (strcmp(flag, "fail_on_unexpected_newline") == 0) {
-    e_flag = FAIL_UNEXPECTED_NEWLINES;
-    debug_print_c(CYAN, "found flag 'fail_on_unexpected_newline'\n");
-  } else if (strcmp(flag, "strict") == 0) {
-    e_flag = STRICT;
-    debug_print_c(CYAN, "found flag 'strict'\n");
-  } else if (strcmp(flag, "trim_command_output") == 0) {
-    e_flag = TRIM_COMMAND_OUTPUT;
-    debug_print_c(CYAN, "found flag 'trim_command_output'\n");
-  } else if (strcmp(flag, "verbose") == 0) {
-    e_flag = VERBOSE;
-    debug_print_c(CYAN, "found flag 'verbose'\n");
-  } else if (strcmp(flag, "color_off") == 0) {
-    e_flag = COLOR_OFF;
-    debug_print_c(CYAN, "found flag 'color_off'\n");
-  } else if (strcmp(flag, "debug") == 0) {
-    e_flag = DEBUG;
-    debug_print_c(CYAN, "found flag 'debug'\n");
-  } else if (strcmp(flag, "append_relative") == 0) {
-    e_flag = APPEND_RELATIVE;
-    debug_print_c(CYAN, "found flag 'append_relative'\n");
-  } else if (strcmp(flag, "always_show_output") == 0) {
-    e_flag = ALWAYS_SHOW_OUTPUT;
-    debug_print_c(CYAN, "found flag 'always_show_output'\n");
+  FOR_ALL_FLAGS(i)
+  {
+    if (strcmp(flag, flag_map[i].flag_str) == 0) {
+      e_flag = flag_map[i].flag;
+      debug_print_c(CYAN, "found flag '%s'\n", flag_map[i].flag_str);
+    }
   }
 
   if (e_flag == NONE) {
     debug_print_c(RED, "found no valid flag for value '%s'\n", flag);
   }
+
   if (flag_on == 1) {
     flags |= e_flag;
     debug_print_c(CYAN, "enabling...\n");
