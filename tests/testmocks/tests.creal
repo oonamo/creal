@@ -1,6 +1,6 @@
 #strict
 name: test a single runner [[! this is a comment !]]
-command: creal ./tests/mocks/one_runner.creal
+command: bin\creal ./tests/mocks/one_runner.creal
 returncode: 0
 output: |
 'test hello' passed.
@@ -8,28 +8,28 @@ output: |
 ---
 #compare_outputs=false
 name: test invalid runner
-command: creal ./tests/mocks/invalid.creal
+command: bin\creal ./tests/mocks/invalid.creal
 returncode: 1
 ---
 name: test non terminating runner w/o strict
-command: creal ./tests/mocks/non_terminating.creal
+command: bin\creal ./tests/mocks/non_terminating.creal
 returncode: 0
 ---
 name: test non terminating runner w/ strict
-command: creal ./tests/mocks/non_terminating_strict.creal
+command: bin\creal ./tests/mocks/non_terminating_strict.creal
 returncode: 1
 ---
 name: test bad flag w/o strict
-command: creal ./tests/mocks/bad_flag.creal
+command: bin\creal ./tests/mocks/bad_flag.creal
 returncode: 0
 ---
 name: test bad flag w/ strict
-command: creal ./tests/mocks/bad_flag_strict.creal
+command: bin\creal ./tests/mocks/bad_flag_strict.creal
 returncode: 1
 ---
 #compare_outputs=true
 name: test diffs
-command: creal ./tests/mocks/diff.creal
+command: bin\creal ./tests/mocks/diff.creal
 output: |
 Printing Diff:
 1: Line 1
