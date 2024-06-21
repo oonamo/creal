@@ -92,6 +92,13 @@ char *str_tolower(char *str)
   return str;
 }
 
+char *str_toupper(char *str)
+{
+  for (char *p = str; *p; p++)
+    *p = toupper(*p);
+  return str;
+}
+
 int isnewline_or_space(char *str)
 {
   int isblank = -1;

@@ -1,7 +1,9 @@
 ifeq ($(OS),Windows_NT)
 	test_file := "./tests/testmocks/tests.creal"
+	install_cmd := install.bat
 else
 	test_file := "./tests/testmocks/unix_tests.creal"
+	install_cmd := install.sh
 endif
 
 build:
@@ -24,5 +26,5 @@ test_release: release
 	@ echo "<== Running Tests for release"
 	@ echo ./creal $(test_file)
 	@ ./creal $(test_file)
-install: build
-	@ install.bat
+install: release
+	@ $(install_cmd)

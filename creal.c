@@ -7,10 +7,40 @@
 #include "funcs.c"
 
 #define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT)
+// static char *action_names[] = { ACTIONS(MAKE_STRING) };
 
 static uint32_t flags = DEFAULT_FLAGS;
 static const char *COMMENT_STR_LEFT = "[[!";
 static const char *COMMENT_STR_RIGHT = "!]]";
+
+struct {
+  Action act;
+  char *act_str;
+} act_map[] = {
+  { EMPTY, NULL },
+  { SINGLE_LINE_OUTPUT, NULL },
+  { MULTI_LINE_OUTPUT, NULL },
+  { COMMAND, "command" },
+  { RETURNCODE, "returncode" },
+  { NAME, "name" },
+  { ACTION_SIZE, "action_size" },
+};
+
+struct {
+  Flags flag;
+  char *flag_str;
+} flag_map[] = {
+  { NONE, "none" },
+  { STRICT, "strict" },
+  { FAIL_UNEXPECTED_NEWLINES, "fail_on_unexpected_newline" },
+  { TRIM_COMMAND_OUTPUT, "trim_command_output" },
+  { VERBOSE, "verbose" },
+  { COLOR_OFF, "color_off" },
+  { DEBUG, "debug" },
+  { APPEND_RELATIVE, "append_relative" },
+  { ALWAYS_SHOW_OUTPUT, "always_show_output" },
+  { SET_COMMENT_STRING, "set_comment_string" },
+};
 
 /// Prints colored output to console.
 void print_c(COLOR c, const char *fmt, ...)
@@ -221,16 +251,38 @@ Action parse_action(Creal *input, const char *action, const char *value)
       creal_act = SINGLE_LINE_OUTPUT;
       add_line(input, value);
     }
-  } else if (strcmp(action, "command") == 0) {
-    creal_act = COMMAND;
-    input->command = malloc(strlen((char *)value) + 1);
-    strcpy(input->command, value);
-  } else if (strcmp(action, "returncode") == 0) {
-    creal_act = RETURNCODE;
-    input->returncode = atoi(value);
-  } else if (strcmp(action, "name") == 0) {
-    creal_act = NAME;
-    input->name = (char *)value;
+    return creal_act;
+  }
+  FOR_ALL_ACTIONS(i)
+  {
+    // avoids *unintentional* access to protected Actions
+    if (act_map[i].act_str == NULL) {
+      continue;
+    }
+    if (strcmp(action, act_map[i].act_str) == 0) {
+      creal_act = i;
+      switch (creal_act) {
+      case COMMAND: {
+        input->command = malloc(strlen((char *)value) + 1);
+        strcpy(input->command, value);
+        break;
+      }
+      case RETURNCODE: {
+        input->returncode = atoi(value);
+        break;
+      }
+      case NAME: {
+        input->name = (char *)value;
+        break;
+      }
+      case SINGLE_LINE_OUTPUT:
+      case MULTI_LINE_OUTPUT:
+      case EMPTY:
+      case ACTION_SIZE:
+        creal_act = EMPTY;
+        break;
+      }
+    }
   }
   return creal_act;
 }

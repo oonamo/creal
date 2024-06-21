@@ -19,6 +19,8 @@ void print_bits(uint32_t bits);
 
 char *str_tolower(char *str);
 
+char *str_toupper(char *str);
+
 int isnewline_or_space(char *str);
 
 int get_substr_index(const char *str, const char *sub_str);

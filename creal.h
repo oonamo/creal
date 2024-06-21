@@ -23,7 +23,11 @@ typedef enum {
   DEBUG = (1 << 6),
   APPEND_RELATIVE = (1 << 7),
   ALWAYS_SHOW_OUTPUT = (1 << 8),
+  SET_COMMENT_STRING = (1 << 9),
+  FLAG_SIZE = (1 << 10),
 } Flags;
+
+#define FOR_ALL_FLAGS(i) for (int i = NONE; (i << i) < FLAG_SIZE; i++)
 
 typedef enum {
   EMPTY,
@@ -32,7 +36,10 @@ typedef enum {
   COMMAND,
   RETURNCODE,
   NAME,
+  ACTION_SIZE
 } Action;
+
+#define FOR_ALL_ACTIONS(i) for (int i = EMPTY; i < ACTION_SIZE; i++)
 
 Creal *init_creal();
 void print_c(COLOR c, const char *fmt, ...);
