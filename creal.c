@@ -103,15 +103,12 @@ void remove_comment(char *line)
   int lhs = get_substr_index(line, COMMENT_STR_LEFT);
   int rhs = get_substr_index(line, COMMENT_STR_RIGHT);
   if (lhs != -1 && rhs != -1) {
-    debug_printf("found comment at idx %d, removing\n", lhs);
-
     // HACK: avoid strncpy param overlap
     char *copy = strdup(line);
     // assume that size is sufficient
     strncpy(line, copy, lhs);
 
     line[lhs] = '\0';
-    debug_printf("new string: %s\n", line);
   }
 }
 
@@ -226,12 +223,8 @@ Action parse_action(Creal *input, const char *action, const char *value)
     }
   } else if (strcmp(action, "command") == 0) {
     creal_act = COMMAND;
-    debug_printf("allocating for command\n");
     input->command = malloc(strlen((char *)value) + 1);
-    debug_printf("allocated for command\n");
-    debug_printf("copying command...\n");
     strcpy(input->command, value);
-    debug_printf("copied command...\n");
   } else if (strcmp(action, "returncode") == 0) {
     creal_act = RETURNCODE;
     input->returncode = atoi(value);
@@ -401,13 +394,9 @@ int execute_runner(Creal *runner, char **failures, size_t fail_count)
   // actual->command = runner->command; <-- May throw error
   actual->command = malloc(strlen(runner->command) + 1);
   strcpy(actual->command, runner->command);
-  debug_printf("executing runner %s\n", runner->name);
   execute_command(actual);
-  debug_printf("ran command actual\n");
   int res = compare_creals(runner, actual);
-  debug_printf("destroying 'actual' runner\n");
   destory_creal(actual, 1);
-  debug_printf("destroyed 'actual' runner\n");
   if (res) {
     add_to_failure(failures, runner, fail_count);
     fail_count++;
@@ -455,19 +444,21 @@ void read_testfile(const char *input_file, size_t *count)
 #else
   file = fopen(input_file, "r");
 #endif
+
   if (file == NULL) {
     fprintf(stderr, "failed to read input file %s\n", input_file);
     exit(EXIT_FAILURE);
   }
+
   int is_output = 0;
   size_t runner_count = 0;
   size_t fail_count = 0;
   char **failures = NULL;
+
   verbose_printf("---\n");
   while (fgets(buffer, sizeof(buffer), file) != NULL) {
     char *copy = strdup(buffer);
     remove_comment(copy);
-    debug_printf("old string: %s, new string: %s\n", buffer, copy);
     char *trimmed_buf = trim(copy);
     char first_char = first_non_empty_char(trimmed_buf);
 
@@ -475,7 +466,9 @@ void read_testfile(const char *input_file, size_t *count)
     if (first_char == -1 && !is_output) {
       continue;
     }
+
     size_t action_idx = index_of_char(copy, ':');
+
     // if still inside stdout: |
     //                         |
     // block
@@ -493,8 +486,8 @@ void read_testfile(const char *input_file, size_t *count)
         input->name = malloc(sizeof(char) * num_digits(runner_count) + 1);
         sprintf(input->name, "%zu", runner_count);
       }
-      int ok = validate_runner(input);
-      if (!ok) {
+
+      if (!validate_runner(input)) {
         if (flags & STRICT) {
           print_c(RED, "Bad runner. Make sure to fill all fields or "
                        "disable strict mode\n");
@@ -504,6 +497,7 @@ void read_testfile(const char *input_file, size_t *count)
         print_c(RED, "Bad runner found, skipping\n");
         continue;
       }
+
       runner_count++;
       execute_runner(input, failures, fail_count);
       destory_creal(input, 0);
@@ -531,6 +525,7 @@ void read_testfile(const char *input_file, size_t *count)
       size_t value_idx = first_non_empty_char(untrimmed);
       const char *trimmed_value = trim(copy_sub_str_offset(untrimmed, value_idx));
       Action act = parse_action(input, action, trimmed_value);
+
       if (act == EMPTY) {
         if (flags & STRICT) {
           print_c(RED, "invalid action: '%s'. Fatal\n", action);
@@ -557,23 +552,16 @@ void read_testfile(const char *input_file, size_t *count)
       fclose(file);
       exit(EXIT_FAILURE);
     }
-    debug_printf("found unran runner, running\n");
     if (input->name == NULL) {
-      debug_printf("did not find name, creating default\n");
       input->name = malloc(sizeof(char) * num_digits(runner_count));
       sprintf(input->name, "%zu", runner_count);
     }
     runner_count++;
-    debug_printf("executing runner\n");
     execute_runner(input, failures, runner_count);
-    debug_printf("executed runner\n");
-    debug_printf("destoying input\n");
 
     // FIX: Ocassionally crashes here
-    debug_printf("name: %s\n", input->name);
     destory_creal(input, 1);
 
-    debug_printf("destoyed input\n");
     verbose_printf("---\n");
     if (fail_count) {
       print_c(RED, "failed runner: \n");
@@ -628,14 +616,9 @@ void execute_command(Creal *creal)
   FILE *fp;
   char buffer[1000];
   size_t line = 0;
-  debug_printf("allocating command\n");
   char *command = malloc(strlen(creal->command) + 1);
   strcpy(command, creal->command);
-  debug_printf("copying string\n");
-  debug_printf("appending string...\n");
-  debug_printf("command: %s\n", command);
   char *appended = append_std_err_redir(command);
-  debug_printf("appended string\n");
 #ifdef _WIN32
   char *cmd = prepend_shell(appended, "cmd /c ");
   fp = _popen(cmd, "r");
