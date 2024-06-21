@@ -31,3 +31,8 @@ jobs:
       run: ./install.bat
     - name: check installation
       run: '& "$Env:USERPROFILE\creal\creal.exe" ./tests/testmocks/tests.creal'
+    - name: refresh path and test install
+      run: |
+        Import-Module "$env:ChocolateyInstall/helpers/chocolateyInstaller.psm1"
+        refreshenv
+        creal ./tests/testmocks/tests.creal
