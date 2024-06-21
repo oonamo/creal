@@ -693,5 +693,8 @@ int main(int argc, char *argv[])
   size_t runner_count = 0;
   int result = read_testfile(test_file, &runner_count);
   debug_printf("exited creal successfully.\n");
-  return result;
+  if (result == 0) {
+    exit(EXIT_SUCCESS);
+  }
+  exit(EXIT_FAILURE);
 }
