@@ -7,26 +7,21 @@
 #include "funcs.c"
 
 #define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT)
-// static char *action_names[] = { ACTIONS(MAKE_STRING) };
 
 static uint32_t flags = DEFAULT_FLAGS;
 static const char *COMMENT_STR_LEFT = "[[!";
 static const char *COMMENT_STR_RIGHT = "!]]";
 
-struct {
+static const struct {
   Action act;
   char *act_str;
 } act_map[] = {
-  { EMPTY, NULL },
-  { SINGLE_LINE_OUTPUT, NULL },
+  { COMMAND, "command" },         { RETURNCODE, "returncode" }, { NAME, "name" },
+  { ACTION_SIZE, "action_size" }, { INVALID_ACTION, NULL },     { SINGLE_LINE_OUTPUT, NULL },
   { MULTI_LINE_OUTPUT, NULL },
-  { COMMAND, "command" },
-  { RETURNCODE, "returncode" },
-  { NAME, "name" },
-  { ACTION_SIZE, "action_size" },
 };
 
-struct {
+static const struct {
   Flags flag;
   char *flag_str;
 } flag_map[] = {
@@ -40,6 +35,7 @@ struct {
   { APPEND_RELATIVE, "append_relative" },
   { ALWAYS_SHOW_OUTPUT, "always_show_output" },
   { SET_COMMENT_STRING, "set_comment_string" },
+  { INVALID_FLAG, NULL },
 };
 
 /// Prints colored output to console.
@@ -196,18 +192,23 @@ int parse_flag(const char *unparsed_flag)
   size_t value_idx = index_of_char(unparsed_flag, '=');
   char *value = copy_sub_str_offset(unparsed_flag, value_idx + 1);
   int flag_on = flag_is_true(value, -1);
-  Flags e_flag = NONE;
+  Flags e_flag = INVALID_FLAG;
 
   FOR_ALL_FLAGS(i)
   {
     if (strcmp(flag, flag_map[i].flag_str) == 0) {
       e_flag = flag_map[i].flag;
       debug_print_c(CYAN, "found flag '%s'\n", flag_map[i].flag_str);
+      break;
     }
   }
 
-  if (e_flag == NONE) {
+  if (e_flag == INVALID_FLAG) {
     debug_print_c(RED, "found no valid flag for value '%s'\n", flag);
+    return -1;
+  }
+  if (flag == NONE) {
+    flags = DEFAULT_FLAGS;
   }
 
   if (flag_on == 1) {
@@ -221,12 +222,12 @@ int parse_flag(const char *unparsed_flag)
       return -1;
     }
   }
-  return e_flag == NONE ? -1 : 0;
+  return e_flag == INVALID_FLAG ? -1 : 0;
 }
 
 Action parse_action(Creal *input, const char *action, const char *value)
 {
-  Action creal_act = EMPTY;
+  Action creal_act = INVALID_ACTION;
   if (strcmp(action, "output") == 0) {
     if (strcmp(value, "|") == 0) {
       creal_act = MULTI_LINE_OUTPUT;
@@ -239,9 +240,6 @@ Action parse_action(Creal *input, const char *action, const char *value)
   FOR_ALL_ACTIONS(i)
   {
     // avoids *unintentional* access to protected Actions
-    if (act_map[i].act_str == NULL) {
-      continue;
-    }
     if (strcmp(action, act_map[i].act_str) == 0) {
       creal_act = i;
       switch (creal_act) {
@@ -260,9 +258,9 @@ Action parse_action(Creal *input, const char *action, const char *value)
       }
       case SINGLE_LINE_OUTPUT:
       case MULTI_LINE_OUTPUT:
-      case EMPTY:
+      case INVALID_ACTION:
       case ACTION_SIZE:
-        creal_act = EMPTY;
+        creal_act = INVALID_ACTION;
         break;
       }
     }
@@ -561,7 +559,7 @@ void read_testfile(const char *input_file, size_t *count)
       const char *trimmed_value = trim(copy_sub_str_offset(untrimmed, value_idx));
       Action act = parse_action(input, action, trimmed_value);
 
-      if (act == EMPTY) {
+      if (act == INVALID_ACTION) {
         if (flags & STRICT) {
           print_c(RED, "invalid action: '%s'. Fatal\n", action);
           exit(EXIT_FAILURE);
@@ -699,6 +697,10 @@ int main(int argc, char *argv[])
     printf("USAGE: creal <file>\n");
     exit(EXIT_FAILURE);
   }
+  /*FOR_ALL_ACTIONS(i)*/
+  /*{*/
+  /*  printf("%s\n", act_map[i].act_str);*/
+  /*}*/
   const char *test_file = argv[1];
   size_t runner_count = 0;
   read_testfile(test_file, &runner_count);
