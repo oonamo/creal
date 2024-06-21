@@ -194,8 +194,7 @@ int parse_flag(const char *unparsed_flag)
   int flag_on = flag_is_true(value, -1);
   Flags e_flag = INVALID_FLAG;
 
-  FOR_ALL_FLAGS(i)
-  {
+  FOR_ALL_FLAGS(i) {
     if (strcmp(flag, flag_map[i].flag_str) == 0) {
       e_flag = flag_map[i].flag;
       debug_print_c(CYAN, "found flag '%s'\n", flag_map[i].flag_str);
@@ -237,8 +236,7 @@ Action parse_action(Creal *input, const char *action, const char *value)
     }
     return creal_act;
   }
-  FOR_ALL_ACTIONS(i)
-  {
+  FOR_ALL_ACTIONS(i) {
     // avoids *unintentional* access to protected Actions
     if (strcmp(action, act_map[i].act_str) == 0) {
       creal_act = i;
@@ -355,8 +353,6 @@ void print_output(const Creal *expected, const Creal *actual)
   }
 }
 
-// TODO: Swap actual and expected to be consistent with other functions
-/*int compare_creals(const Creal *actual, const Creal *expected)*/
 int compare_creals(const Creal *expected, const Creal *actual)
 {
   int failed = 0;
@@ -527,7 +523,10 @@ void read_testfile(const char *input_file, size_t *count)
           exit(EXIT_FAILURE);
         }
         // TODO: Print availabe information of runner
-        print_c(RED, "Bad runner found, skipping\n");
+        print_c(RED, "Bad runner found, skipping: \n");
+        print_creal(input);
+        destory_creal(input, 0);
+        input = init_creal();
         continue;
       }
 
@@ -592,7 +591,6 @@ void read_testfile(const char *input_file, size_t *count)
     runner_count++;
     execute_runner(input, failures, runner_count);
 
-    // FIX: Ocassionally crashes here
     destory_creal(input, 1);
 
     verbose_printf("---\n");
@@ -697,10 +695,6 @@ int main(int argc, char *argv[])
     printf("USAGE: creal <file>\n");
     exit(EXIT_FAILURE);
   }
-  /*FOR_ALL_ACTIONS(i)*/
-  /*{*/
-  /*  printf("%s\n", act_map[i].act_str);*/
-  /*}*/
   const char *test_file = argv[1];
   size_t runner_count = 0;
   read_testfile(test_file, &runner_count);

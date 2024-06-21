@@ -42,3 +42,6 @@ AlignConsecutiveMacros: AcrossEmptyLines
 IndentPPDirectives: AfterHash
 SpaceBeforeParens: ControlStatementsExceptControlMacros
 PPIndentWidth: 1
+ForEachMacros:
+  - FOR_ALL_ACTIONS
+  - FOR_ALL_FLAGS
