@@ -13,6 +13,7 @@ make build
 
 rem Copy executable
 echo Installing at "%INSTALL_DIR%\"
+echo "copying from %~dp0"
 copy /Y "%~dp0creal.exe" "%INSTALL_DIR%\"
 
 rem Copy path to a file
