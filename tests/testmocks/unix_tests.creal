@@ -6,6 +6,7 @@ output: |
 'test hello' passed.
         |
 ---
+#compare_outputs=false
 name: test invalid runner
 command: ./creal ./tests/mocks/invalid.creal
 returncode: 1
@@ -26,6 +27,7 @@ name: test bad flag w/ strict
 command: ./creal ./tests/mocks/bad_flag_strict.creal
 returncode: 1
 ---
+#compare_outputs=true
 name: test diffs
 command: ./creal ./tests/mocks/unix_diff.creal
 output: |

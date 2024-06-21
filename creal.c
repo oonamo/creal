@@ -6,7 +6,7 @@
 
 #include "funcs.c"
 
-#define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT)
+#define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT | COMPARE_OUTPUTS)
 
 static uint32_t flags = DEFAULT_FLAGS;
 static const char *COMMENT_STR_LEFT = "[[!";
@@ -16,8 +16,8 @@ static const struct {
   Action act;
   char *act_str;
 } act_map[] = {
-  { COMMAND, "command" },         { RETURNCODE, "returncode" }, { NAME, "name" },
-  { ACTION_SIZE, "action_size" }, { INVALID_ACTION, NULL },     { SINGLE_LINE_OUTPUT, NULL },
+  { COMMAND, "command" },      { RETURNCODE, "returncode" }, { NAME, "name" },
+  { ACTION_SIZE, NULL },       { INVALID_ACTION, NULL },     { SINGLE_LINE_OUTPUT, NULL },
   { MULTI_LINE_OUTPUT, NULL },
 };
 
@@ -35,6 +35,8 @@ static const struct {
   { APPEND_RELATIVE, "append_relative" },
   { ALWAYS_SHOW_OUTPUT, "always_show_output" },
   { SET_COMMENT_STRING, "set_comment_string" },
+  { COMPARE_OUTPUTS, "compare_outputs" },
+  { FLAG_SIZE, NULL },
   { INVALID_FLAG, NULL },
 };
 
@@ -193,11 +195,11 @@ int parse_flag(const char *unparsed_flag)
   char *value = copy_sub_str_offset(unparsed_flag, value_idx + 1);
   int flag_on = flag_is_true(value, -1);
   Flags e_flag = INVALID_FLAG;
+  debug_printf("flag: %s, value: %s\n", flag, value);
 
   FOR_ALL_FLAGS(i) {
     if (strcmp(flag, flag_map[i].flag_str) == 0) {
       e_flag = flag_map[i].flag;
-      debug_print_c(CYAN, "found flag '%s'\n", flag_map[i].flag_str);
       break;
     }
   }
@@ -291,23 +293,14 @@ void add_line(Creal *creal, const char *line)
 
 void print_flags()
 {
-  verbose_printf("active flags for runner:\n");
-  if (flags & FAIL_UNEXPECTED_NEWLINES) {
-    verbose_print_c(CYAN, "\tfail_unexpected_newlines\n");
-  }
-  if (flags & STRICT) {
-    verbose_print_c(CYAN, "\tstrict\n");
-  }
   if (flags & VERBOSE) {
-    verbose_print_c(CYAN, "\tverbose\n");
+    FOR_ALL_FLAGS(i) {
+      if (flags & flag_map[i].flag) {
+        print_c(CYAN, "\t%s\n", flag_map[i].flag_str);
+      }
+    }
+    printf("\n");
   }
-  if (flags & TRIM_COMMAND_OUTPUT) {
-    verbose_print_c(CYAN, "\ttrim_command_output\n");
-  }
-  if (flags & COLOR_OFF) {
-    verbose_print_c(CYAN, "\tcolor_off\n");
-  }
-  verbose_printf("\n");
 }
 
 void print_diff(const Creal *expected, const Creal *actual, size_t start_of_diff)
@@ -360,7 +353,7 @@ int compare_creals(const Creal *expected, const Creal *actual)
   verbose_print_c(YELLOW, "testing runner '%s'\n", expected->name);
   print_flags();
   size_t num_lines = expected->lines;
-  if (expected->lines != 0) {
+  if (flags & COMPARE_OUTPUTS) {
     if (actual->lines != expected->lines) {
       if (flags & STRICT) {
         print_c(RED, "The output contains diffrent number of lines than "

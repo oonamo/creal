@@ -1,3 +1,5 @@
+#debug
+#verbose
 #non_existing_flag
 name: bad flag without strict
 command: echo hello

@@ -10,7 +10,6 @@ typedef struct {
   char *command;
   char **output;
   char *name;
-
 } Creal;
 
 /// To Add a new Flag follow these steps
@@ -46,13 +45,15 @@ typedef enum {
   ALWAYS_SHOW_OUTPUT = (1 << 8),
   /// Unimplemented.
   SET_COMMENT_STRING = (1 << 9),
+  /// Default flag. If set, compares the output between the runner and the result
+  COMPARE_OUTPUTS = (1 << 10),
   /// Internal use only. Signifies the end of the user flags.
-  FLAG_SIZE = (1 << 10),
+  FLAG_SIZE = (1 << 11),
   /// Signifies that a flag in the creal file is invalid
-  INVALID_FLAG = (1 << 11),
+  INVALID_FLAG = (1 << 12),
 } Flags;
 
-#define FOR_ALL_FLAGS(i) for (int i = NONE; (i << i) < FLAG_SIZE; i++)
+#define FOR_ALL_FLAGS(i) for (int i = NONE; 1 << i < FLAG_SIZE; i++)
 
 /// To Add a new Action follow these steps
 /// 1. Create a member with a similar name convention as below
