@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "funcs.h"
+
 typedef struct {
   int returncode;
   size_t lines;
@@ -12,6 +13,35 @@ typedef struct {
   char *name;
 } Creal;
 
+typedef struct {
+  char *name;
+  char *value;
+} f_vars_t;
+
+typedef struct {
+  uint32_t flags;
+  // Reserve variables[0] and variables[1] as comment_vars
+  size_t varcount;
+  f_vars_t *vars;
+  char *l_comment_str;
+  char *r_comment_str;
+} file_t;
+
+#define MAX_VAR_LENGTH             25
+
+#define FOR_ALL_VARIABLES(i, File) for (size_t i = 0; i < File->varcount; i++)
+file_t *init_file_t();
+void destroy_file_t(file_t *file);
+
+/* Global Settings */
+void f_add_var_to_file(file_t *File, char *variable, char *value);
+int f_var_is_unique(file_t *File, const char *name);
+void f_set_comment_str(file_t *File, const char *lhs, const char *rhs);
+void f_set_template_str(file_t *File, const char *delimiter, const char symbol);
+
+/* Templateing */
+char *replace_template_str(file_t *File, const char *variable);
+
 /// To Add a new Flag follow these steps
 /// 1. Create a member with a similar name convention as below
 /// 2. Assign the new member with a unique value
@@ -19,8 +49,8 @@ typedef struct {
 /// 4. In the same order, go to creal.c, then add your member in the same order, and write it's
 /// represenation in the test file. The string name does **not** have to be the same as the member
 /// name
-/// 5. If the flag is not to be used externally, place after FLAG_SIZE, then in creal.c, in the same
-/// order, place the member and write it's string as NULL
+/// 5. If the flag is not to be used externally, place after FLAG_SIZE, then in creal.c, in the
+/// same order, place the member and write it's string as NULL
 
 /// Enum representing the flags available in creal
 typedef enum {
@@ -47,6 +77,8 @@ typedef enum {
   SET_COMMENT_STRING = (1 << 9),
   /// Default flag. If set, compares the output between the runner and the result
   COMPARE_OUTPUTS = (1 << 10),
+  /// Set variable
+  SETVAR = (1 << 9),
   /// Internal use only. Signifies the end of the user flags.
   FLAG_SIZE = (1 << 11),
   /// Signifies that a flag in the creal file is invalid

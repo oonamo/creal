@@ -26,6 +26,24 @@ size_t index_of_char(const char *str, char c)
   return i;
 }
 
+char *replace_sub_str(const char *original, size_t start, size_t end, const char *replacement)
+{
+  size_t o_len = strlen(original) - 1;
+  size_t r_len = strlen(replacement) - 1;
+  size_t new_len = o_len - (end - start) + r_len;
+
+  char *new_str = malloc(sizeof(char) * new_len + 1);
+  if (new_str == NULL) {
+    return NULL;
+  }
+  strncpy(new_str, original, start);
+  new_str[start] = '\0';  // ensure a valid c str
+  strcat(new_str, replacement);
+  strcat(new_str, original + end);
+
+  return new_str;
+}
+
 char *copy_sub_str(const char *source, char delimiter)
 {
   size_t idx = index_of_char(source, delimiter);

@@ -12,6 +12,10 @@ static uint32_t flags = DEFAULT_FLAGS;
 static const char *COMMENT_STR_LEFT = "[[!";
 static const char *COMMENT_STR_RIGHT = "!]]";
 
+static file_t File = {
+  .flags = DEFAULT_FLAGS,
+};
+
 static const struct {
   Action act;
   char *act_str;
@@ -36,6 +40,7 @@ static const struct {
   { ALWAYS_SHOW_OUTPUT, "always_show_output" },
   { SET_COMMENT_STRING, "set_comment_string" },
   { COMPARE_OUTPUTS, "compare_outputs" },
+  { SETVAR, "set" },
   { FLAG_SIZE, NULL },
   { INVALID_FLAG, NULL },
 };
@@ -123,6 +128,121 @@ void debug_printf(const char *fmt, ...)
   }
 }
 
+int f_var_is_unique(file_t *File, const char *name)
+{
+  FOR_ALL_VARIABLES(i, File) {
+    if (strcmp(File->vars[i].name, name) == 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+file_t *init_file_t()
+{
+  file_t *File = malloc(sizeof(file_t));
+  File->vars = malloc(sizeof(f_vars_t));
+  File->l_comment_str = (char *)COMMENT_STR_LEFT;
+  File->r_comment_str = (char *)COMMENT_STR_RIGHT;
+  File->varcount = 0;
+  File->flags = DEFAULT_FLAGS;
+  return File;
+}
+void destroy_file_t(file_t *file)
+{
+  free(file->r_comment_str);
+  free(file->l_comment_str);
+  FOR_ALL_VARIABLES(i, file) {
+    free(file->vars[i].name);
+    free(file->vars[i].value);
+  }
+  free(file->vars);
+}
+
+void f_set_template_str(file_t *File, const char *delimiter, const char symbol);
+
+void f_add_var_to_file(file_t *File, char *variable, char *value)
+{
+  // increase size by 1
+  int var_idx = f_var_is_unique(File, variable);
+  if (var_idx < 0) {
+    var_idx = File->varcount;
+    File->vars = realloc(File->vars, (var_idx + 1) * sizeof(f_vars_t));
+    if (File->vars == NULL) {
+      fprintf(stderr, "failed to allocate memory for variable");
+      exit(1);
+    }
+  } else {
+    free(File->vars[var_idx].name);
+    free(File->vars[var_idx].value);
+  }
+
+  File->vars[var_idx].name = malloc(strlen(variable) + 1);
+  File->vars[var_idx].value = malloc(strlen(value) + 1);
+
+  // [name_of_var=value]
+  strcpy(File->vars[var_idx].name, variable);
+  strcpy(File->vars[var_idx].value, value);
+  File->varcount++;
+}
+
+void f_set_comment_str(file_t *File, const char *lhs, const char *rhs)
+{
+  File->l_comment_str = realloc(File->l_comment_str, strlen(lhs) + 1);
+  if (File->l_comment_str == NULL) {
+    fprintf(stderr, "failed to allocate memory for variable");
+    exit(1);
+  }
+  File->r_comment_str = realloc(File->r_comment_str, strlen(rhs) + 1);
+  if (File->r_comment_str == NULL) {
+    fprintf(stderr, "failed to allocate memory for variable");
+    exit(1);
+  }
+
+  strcpy(File->l_comment_str, lhs);
+  strcpy(File->r_comment_str, rhs);
+}
+
+char *replace_template_str(file_t *File, const char *string)
+{
+  // 1. Find template string
+  size_t ds = index_of_char(string, '$');
+  // '$' does not exist
+  if (ds < 0) {
+    return NULL;
+  }
+
+  // 2. find '{' and '}'
+  size_t l_brack = index_of_char(string, '{');
+  if (l_brack < 0) {
+    return NULL;
+  }
+
+  size_t r_brack = index_of_char(string, '}');
+  if (r_brack < 0) {
+    return NULL;
+  }
+
+  // ie $} something {
+  if (l_brack >= r_brack) {
+    return NULL;
+  }
+
+  // TODO: Is this reasonable?
+  char var_name[MAX_VAR_LENGTH];
+  // Memcpy so if var_name is to large, terminate with nulls
+  memcpy(var_name, string + l_brack, r_brack - l_brack);
+
+  FOR_ALL_VARIABLES(i, File) {
+    if (strcmp(File->vars[i].name, var_name) == 0) {
+      // Replace that string with the value of the variable
+      return replace_sub_str(string, ds, r_brack, File->vars[i].value);
+    }
+  }
+  // TODO: Should this error ( on strict ), or allow it to be passed literally?
+  return NULL;
+}
+
 /// Checks if comment contains both COMMENT_STR_LEFT and COMMENT_STR_RIGHT
 /// if so, removes everything from the beginning of COMMENT_STR_LEFT to the
 /// right
@@ -207,8 +327,9 @@ int parse_flag(const char *unparsed_flag)
   if (e_flag == INVALID_FLAG) {
     debug_print_c(RED, "found no valid flag for value '%s'\n", flag);
     return -1;
-  }
-  if (flag == NONE) {
+  } else if (e_flag == SETVAR) {
+    // set a variable
+  } else if (e_flag == NONE) {
     flags = DEFAULT_FLAGS;
   }
 
@@ -447,6 +568,25 @@ int validate_runner(const Creal *creal)
   return ok;
 }
 
+void cleanup(Creal *creal, file_t *file, char **failures, size_t failcount, FILE *fp)
+{
+  if (creal != NULL) {
+    destory_creal(creal, 1);
+  }
+  if (file != NULL) {
+    destroy_file_t(file);
+  }
+  if (failures != NULL) {
+    for (size_t i = 0; i < failcount; i++) {
+      free(failures[i]);
+    }
+    free(failures);
+  }
+  if (fp != NULL) {
+    fclose(fp);
+  }
+}
+
 /// read line by line
 /// Priority List:
 /// 1. multiline stdout: Everything is stored into array. No other process is
@@ -468,8 +608,8 @@ int read_testfile(const char *input_file, size_t *count)
 #endif
 
   if (file == NULL) {
-    fprintf(stderr, "failed to read input file %s\n", input_file);
-    exit(EXIT_FAILURE);
+    cleanup(input, NULL, NULL, 0, file);
+    return EXIT_FAILURE;
   }
 
   int is_output = 0;
@@ -513,7 +653,8 @@ int read_testfile(const char *input_file, size_t *count)
         if (flags & STRICT) {
           print_c(RED, "Bad runner. Make sure to fill all fields or "
                        "disable strict mode\n");
-          exit(EXIT_FAILURE);
+          cleanup(input, NULL, failures, fail_count, file);
+          return EXIT_FAILURE;
         }
         // TODO: Print availabe information of runner
         print_c(RED, "Bad runner found, skipping: \n");
@@ -537,7 +678,8 @@ int read_testfile(const char *input_file, size_t *count)
       if (res == -1) {
         if (flags & STRICT) {
           print_c(RED, "did not find value/flag %s\n", unparsed);
-          exit(EXIT_FAILURE);
+          cleanup(input, NULL, failures, fail_count, file);
+          return EXIT_FAILURE;
         }
         verbose_print_c(YELLOW, "flag '%s' does not exist.\n", unparsed);
       }
@@ -554,7 +696,8 @@ int read_testfile(const char *input_file, size_t *count)
       if (act == INVALID_ACTION) {
         if (flags & STRICT) {
           print_c(RED, "invalid action: '%s'. Fatal\n", action);
-          exit(EXIT_FAILURE);
+          cleanup(input, NULL, failures, fail_count, file);
+          return EXIT_FAILURE;
         }
         print_c(YELLOW, "invalid action: '%s'. Continuing...\n", action);
       }
@@ -573,9 +716,8 @@ int read_testfile(const char *input_file, size_t *count)
     if (flags & STRICT) {
       print_c(RED, "found runner at the end of file, but it is never "
                    "terminated.\n");
-      free(input);
-      fclose(file);
-      exit(EXIT_FAILURE);
+      cleanup(input, NULL, failures, fail_count, file);
+      return EXIT_FAILURE;
     }
     if (input->name == NULL) {
       input->name = malloc(sizeof(char) * num_digits(runner_count));
@@ -598,7 +740,7 @@ int read_testfile(const char *input_file, size_t *count)
   }
   fclose(file);
   *count = runner_count;
-  return runner_count == 0;
+  return fail_count != 0;
 }
 
 char *append_std_err_redir(char *cmd)
@@ -691,10 +833,10 @@ int main(int argc, char *argv[])
   }
   const char *test_file = argv[1];
   size_t runner_count = 0;
-  int result = read_testfile(test_file, &runner_count);
+  int failed = read_testfile(test_file, &runner_count);
   debug_printf("exited creal successfully.\n");
-  if (result == 0) {
-    exit(EXIT_SUCCESS);
+  if (failed) {
+    exit(EXIT_FAILURE);
   }
-  exit(EXIT_FAILURE);
+  exit(EXIT_SUCCESS);
 }
