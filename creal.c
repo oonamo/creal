@@ -542,7 +542,6 @@ int execute_runner(Creal *runner, char **failures, size_t fail_count)
   destory_creal(actual, 1);
   if (res) {
     add_to_failure(failures, runner, fail_count);
-    fail_count++;
   }
   return res;
 }
@@ -665,7 +664,9 @@ int read_testfile(const char *input_file, size_t *count)
       }
 
       runner_count++;
-      execute_runner(input, failures, fail_count);
+      if (execute_runner(input, failures, fail_count)) {
+        fail_count++;
+      }
       destory_creal(input, 0);
       input = init_creal();
       verbose_printf("---\n");
@@ -724,7 +725,9 @@ int read_testfile(const char *input_file, size_t *count)
       sprintf(input->name, "%zu", runner_count);
     }
     runner_count++;
-    execute_runner(input, failures, runner_count);
+    if (execute_runner(input, failures, runner_count)) {
+      fail_count++;
+    }
 
     destory_creal(input, 1);
 
@@ -836,7 +839,9 @@ int main(int argc, char *argv[])
   int failed = read_testfile(test_file, &runner_count);
   debug_printf("exited creal successfully.\n");
   if (failed) {
+    verbose_print_c(RED, "failed\n");
     exit(EXIT_FAILURE);
   }
+  verbose_print_c(GREEN, "passed\n");
   exit(EXIT_SUCCESS);
 }

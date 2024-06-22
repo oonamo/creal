@@ -43,5 +43,5 @@ Printing Diff:
 
 'diffs' failed.
         |
-returncode: 0
+returncode: 1
 ---
