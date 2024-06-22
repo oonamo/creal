@@ -8,16 +8,17 @@ endif
 
 build:
 	@ echo "<== GCC Build"
-	@ gcc ./creal.c -o ./bin/creal
+	@ gcc ./src/creal.c -o ./bin/creal
 release:
 	@ echo "<== GCC Build Release"
-	@ gcc ./creal.c -o creal -O3
+	@ gcc ./src/creal.c -o creal -O3
 debug:
 	@ echo "<== GCC Debug"
 	@ gcc -g -fno-inline -fno-omit-frame-pointer -Og ./creal.c -o ./bin/creal
 clang_debug:
 	@ echo "<== Clang Debug"
-	@ clang ./creal.c -g -fsanitize=address -o ./bin/creal
+	@ clang ./src/creal.c -g -fsanitize=address -o ./bin/creal
+	@ ./bin/creal $(test_file)
 run_tests: build
 	@ echo "<== Running Tests"
 	@ echo $(test_file)
