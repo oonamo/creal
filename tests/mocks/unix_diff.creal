@@ -9,4 +9,5 @@ output: |
 5: Line 5
 6: Line 6
         |
+returncode: 1
 ---
