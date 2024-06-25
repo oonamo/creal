@@ -1,0 +1,54 @@
+#verbose
+#strict
+#debug
+#set shell=something
+name: test a single runner [[! this is a comment !]]
+command: bin\creal ./tests/mocks/one_runner.creal
+returncode: 0
+output: |
+'test hello' passed.
+        |
+---
+#compare_outputs=false
+name: test invalid runner
+command: bin\creal ./tests/mocks/invalid.creal
+returncode: 1
+---
+name: test non terminating runner w/o strict
+command: bin\creal ./tests/mocks/non_terminating.creal
+returncode: 0
+---
+name: test non terminating runner w/ strict
+command: bin\creal ./tests/mocks/non_terminating_strict.creal
+returncode: 1
+---
+name: test bad flag w/o strict
+command: bin\creal ./tests/mocks/bad_flag.creal
+returncode: 0
+---
+name: test bad flag w/ strict
+command: bin\creal ./tests/mocks/bad_flag_strict.creal
+returncode: 1
+---
+#compare_outputs=true
+name: test diffs
+command: bin\creal ./tests/mocks/diff.creal
+output: |
+Printing Diff:
+1: Line 1
+2: Line 2
+3: Line 3
+4: Line 4
+5: Line 5
+>>>
+6: Line 6
+>>>
+
+'diffs' failed.
+        |
+returncode: 1
+---
+name: test variables
+command: bin\creal ./tests/mocks/variable.creal
+returncode: 0
+---

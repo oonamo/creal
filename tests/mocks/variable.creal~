@@ -1,0 +1,11 @@
+#set shell=cmd
+name: test ${shell}
+command: echo testing ${shell}
+output: testing cmd
+returncode: 0
+---
+#set slash=some\slash
+name: test slash
+command: echo testing ${slash}
+output: testing some\slash
+---

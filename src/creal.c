@@ -1,29 +1,17 @@
 #include "creal.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "actions.c"
+#include "creal_strings.c"
 #include "funcs.c"
 
 #define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT | COMPARE_OUTPUTS)
 
 static uint32_t flags = DEFAULT_FLAGS;
-static const char *COMMENT_STR_LEFT = "[[!";
-static const char *COMMENT_STR_RIGHT = "!]]";
-
-static file_t File = {
-  .flags = DEFAULT_FLAGS,
-};
-/*static const struct {*/
-/*  Action act;*/
-/*  char *act_str;*/
-/*} act_map[] = {*/
-/*  { COMMAND, "command" },      { RETURNCODE, "returncode" }, { NAME, "name" },*/
-/*  { ACTION_SIZE, NULL },       { INVALID_ACTION, NULL },     { SINGLE_LINE_OUTPUT, NULL },*/
-/*  { MULTI_LINE_OUTPUT, NULL },*/
-/*};*/
 
 static const struct {
   Flags flag;
@@ -142,12 +130,16 @@ file_t *init_file_t()
 {
   file_t *File = malloc(sizeof(file_t));
   File->vars = malloc(sizeof(f_vars_t));
-  File->l_comment_str = (char *)COMMENT_STR_LEFT;
-  File->r_comment_str = (char *)COMMENT_STR_RIGHT;
+  File->l_comment_str = malloc(strlen(COMMENT_STR_LEFT) + 1);
+  File->r_comment_str = malloc(strlen(COMMENT_STR_RIGHT) + 1);
+  strcpy(File->l_comment_str, COMMENT_STR_LEFT);
+  strcpy(File->r_comment_str, COMMENT_STR_RIGHT);
   File->varcount = 0;
-  File->flags = DEFAULT_FLAGS;
+  File->template_str.delimter = '$';
+  strcpy(File->template_str.surround, "{}");
   return File;
 }
+
 void destroy_file_t(file_t *file)
 {
   free(file->r_comment_str);
@@ -157,6 +149,7 @@ void destroy_file_t(file_t *file)
     free(file->vars[i].value);
   }
   free(file->vars);
+  free(file);
 }
 
 void f_set_template_str(file_t *File, const char *delimiter, const char symbol);
@@ -203,62 +196,45 @@ void f_set_comment_str(file_t *File, const char *lhs, const char *rhs)
   strcpy(File->r_comment_str, rhs);
 }
 
-char *replace_template_str(file_t *File, const char *string)
+int replace_template_str(file_t *file, char *str)
 {
-  // 1. Find template string
-  size_t ds = index_of_char(string, '$');
-  // '$' does not exist
-  if (ds < 0) {
-    return NULL;
+  int ds = index_of_char(str, '$');
+  if (ds == -1) {
+    return 0;
   }
-
-  // 2. find '{' and '}'
-  size_t l_brack = index_of_char(string, '{');
-  if (l_brack < 0) {
-    return NULL;
+  int lb = index_of_char(str, '{');
+  if (lb == -1) {
+    return 0;
   }
+  int rb = index_of_char(str, '}');
 
-  size_t r_brack = index_of_char(string, '}');
-  if (r_brack < 0) {
-    return NULL;
+  if (lb - 1 != ds || rb >= lb) {
+    return 0;
   }
-
-  // ie $} something {
-  if (l_brack >= r_brack) {
-    return NULL;
-  }
-
-  // TODO: Is this reasonable?
-  char var_name[MAX_VAR_LENGTH];
-  // Memcpy so if var_name is to large, terminate with nulls
-  memcpy(var_name, string + l_brack, r_brack - l_brack);
-
-  FOR_ALL_VARIABLES(i, File) {
-    if (strcmp(File->vars[i].name, var_name) == 0) {
-      // Replace that string with the value of the variable
-      return replace_sub_str(string, ds, r_brack, File->vars[i].value);
+  char *substr = sub_str_s_e(str, ds, rb);
+  FOR_ALL_VARIABLES(i, file) {
+    if (strcmp(substr, file->vars[i].name) == 0) {
+      replace_sub_str(str, ds, rb, file->vars[i].value);
     }
   }
-  // TODO: Should this error ( on strict ), or allow it to be passed literally?
-  return NULL;
 }
 
 /// Checks if comment contains both COMMENT_STR_LEFT and COMMENT_STR_RIGHT
 /// if so, removes everything from the beginning of COMMENT_STR_LEFT to the
 /// right
-void remove_comment(char *line)
-{
-  int lhs = get_substr_index(line, COMMENT_STR_LEFT);
-  int rhs = get_substr_index(line, COMMENT_STR_RIGHT);
-  if (lhs != -1 && rhs != -1) {
-    // HACK: avoid strncpy param overlap
-    char *copy = strdup(line);
-    // assume that size is sufficient
-    strncpy(line, copy, lhs);
-
-    line[lhs] = '\0';
-  }
-}
+/*void remove_comment(char *line)*/
+/*{*/
+/*  int lhs = get_substr_index(line, COMMENT_STR_LEFT);*/
+/*  int rhs = get_substr_index(line, COMMENT_STR_RIGHT);*/
+/*  if (lhs != -1 && rhs != -1) {*/
+/*    // HACK: avoid strncpy param overlap*/
+/*    char *copy = strdup(line);*/
+/*    line = realloc(line, lhs + 1);*/
+/*    // assume that size is sufficient*/
+/*    strncpy(line, copy, lhs);*/
+/*    line[lhs] = '\0';*/
+/*  }*/
+/*}*/
 
 Creal *init_creal()
 {
@@ -272,6 +248,7 @@ Creal *init_creal()
   c->output = NULL;
   c->command = NULL;
   c->name = NULL;
+  c->file_h = init_file_t();
   return c;
 }
 
@@ -292,6 +269,7 @@ void destory_creal(Creal *creal, int can_destroy_self)
     free(creal->name);
   }
   if (can_destroy_self) {
+    destroy_file_t(creal->file_h);
     free(creal);
   }
 }
@@ -308,12 +286,23 @@ int flag_is_true(const char *value, int fallback)
     return fallback;
 }
 
-int parse_flag(const char *unparsed_flag)
+// TODO: Add Creal input
+int parse_flag(Creal *input, const char *unparsed_flag)
 {
-  char *flag = copy_sub_str(unparsed_flag, '=');
-  size_t value_idx = index_of_char(unparsed_flag, '=');
-  char *value = copy_sub_str_offset(unparsed_flag, value_idx + 1);
+  size_t eq_idx = index_of_char(unparsed_flag, '=');
+  int space_idx = index_of_char(unparsed_flag, ' ');
+  char *flag;
+  char *value = copy_sub_str_offset(unparsed_flag, eq_idx + 1);
   int flag_on = flag_is_true(value, -1);
+  char *name;
+  flag = copy_sub_str(unparsed_flag, ' ');
+  if (space_idx != -1 && strcmp(flag, "set") == 0) {
+    name = sub_str_s_e(unparsed_flag, space_idx + 1, eq_idx);
+    f_add_var_to_file(input->file_h, name, value);
+    return 1;
+  } else {
+    flag = copy_sub_str(unparsed_flag, '=');
+  }
   Flags e_flag = INVALID_FLAG;
   debug_printf("flag: %s, value: %s\n", flag, value);
 
@@ -328,7 +317,7 @@ int parse_flag(const char *unparsed_flag)
     debug_print_c(RED, "found no valid flag for value '%s'\n", flag);
     return -1;
   } else if (e_flag == SETVAR) {
-    // set a variable
+    /*f_add_var_to_file(file_t *File, char *variable, char *value);*/
   } else if (e_flag == NONE) {
     flags = DEFAULT_FLAGS;
   }
@@ -409,30 +398,40 @@ void print_flags()
   }
 }
 
+/// prints diff of expected vs actual
+/// Most of the times, the number of lines will differ
+/// We first print normally until we reach before the diff
+/// Once we reach the diff point, we print
 void print_diff(const Creal *expected, const Creal *actual, size_t start_of_diff)
 {
   size_t line = 0;
   print_c(BLUE, "Printing Diff:\n");
-  while (1) {
-    if (line >= expected->lines && line > actual->lines)
-      break;
-    // print normal stdout, before their diff
+  int exp_done = 0, act_done = 0;
+  while (!exp_done || !act_done) {
     if (line < start_of_diff) {
-      verbose_printf("expected and actual: \n");
-      printf("%s\n", expected->output[line]);
+      if (line < expected->lines) {
+        printf("%s\n", expected->output[line]);
+      } else if (line < actual->lines) {
+        printf("%s\n", actual->output[line]);
+      } else {
+        exp_done = 1;
+        act_done = 1;
+        break;
+      }
       line++;
       continue;
-    }
-    if (line < expected->lines) {
-      print_c(GREEN, "%s\n", expected->output[line]);
     } else {
-      print_c(GREEN, ">>>\n");
+      if (line < expected->lines) {
+        print_c(RED, "%zu: ", line + 1);
+        printf("%s\n", expected->output[line]);
+      }
+      if (line < actual->lines) {
+        print_c(GREEN, "%zu: ", line + 1);
+        printf("%s\n", actual->output[line]);
+      }
     }
-    if (line < actual->lines) {
-      print_c(RED, "%s\n", actual->output[line]);
-    } else {
-      print_c(RED, ">>>\n");
-    }
+    if (line > expected->lines && line > actual->lines)
+      break;
     line++;
   }
   printf("\n");
@@ -519,7 +518,6 @@ int compare_creals(const Creal *expected, const Creal *actual)
 int execute_runner(Creal *runner, char **failures, size_t fail_count)
 {
   Creal *actual = init_creal();
-  // actual->command = runner->command; <-- May throw error
   actual->command = malloc(strlen(runner->command) + 1);
   strcpy(actual->command, runner->command);
   execute_command(actual);
@@ -570,6 +568,34 @@ void cleanup(Creal *creal, file_t *file, char **failures, size_t failcount, FILE
     fclose(fp);
   }
 }
+int create_and_execute_runner(Creal *input, char **failures, size_t failure_count,
+                              size_t runner_count)
+{
+  int res = 0;
+  if (input->name == NULL) {
+    input->name = malloc(sizeof(char) * num_digits(runner_count) + 1);
+    sprintf(input->name, "%zu", runner_count);
+  }
+  if (!validate_runner(input)) {
+    if (flags & STRICT) {
+      print_c(RED, "Bad runner. Make sure to fill all fields or "
+                   "disable strict mode\n");
+      return -1;
+    }
+    print_c(RED, "Bad runner found, skipping: \n");
+    print_creal(input);
+    destory_creal(input, 0);
+    input = init_creal();
+  }
+  res = 2;
+  if (execute_runner(input, failures, failure_count)) {
+    res = 1;
+  }
+  destory_creal(input, 0);
+  input = init_creal();
+  verbose_printf("---\n");
+  return res;
+}
 
 /// read line by line
 /// Priority List:
@@ -603,78 +629,42 @@ int read_testfile(const char *input_file, size_t *count)
 
   verbose_printf("---\n");
   while (fgets(buffer, sizeof(buffer), file) != NULL) {
-    char *copy = strdup(buffer);
+    creal_str_t *copy = from_str(buffer, 0);
     remove_comment(copy);
-    char *trimmed_buf = trim(copy);
-    char first_char = first_non_empty_char(trimmed_buf);
+    creal_str_t *trimmed = new_str();
+    copy_str(trimmed, trim(copy->str));
+    printf("copy: \n");
+    print_str_debug(copy);
+    printf("trimmed: \n");
+    print_str_debug(trimmed);
+    int firstchar = -1;
+    int action_idx = -1;
 
-    // if its empty line
-    if (first_char == -1 && !is_output) {
-      continue;
-    }
-
-    size_t action_idx = index_of_char(copy, ':');
-
-    // if still inside stdout: |
-    //                         |
-    // block
     if (is_output) {
-      if (strcmp(trimmed_buf, "|") == 0) {
+      if (is_in_output(trimmed)) {
+        add_line(input, buffer);
+      } else {
         is_output = 0;
-        continue;
       }
-      add_line(input, buffer);
-      continue;
-    }
-    // Indicates new runner
-    else if (strcmp(trimmed_buf, "---") == 0) {
-      if (input->name == NULL) {
-        input->name = malloc(sizeof(char) * num_digits(runner_count) + 1);
-        sprintf(input->name, "%zu", runner_count);
-      }
-
-      if (!validate_runner(input)) {
-        if (flags & STRICT) {
-          print_c(RED, "Bad runner. Make sure to fill all fields or "
-                       "disable strict mode\n");
-          cleanup(input, NULL, failures, fail_count, file);
-          return EXIT_FAILURE;
-        }
-        // TODO: Print availabe information of runner
-        print_c(RED, "Bad runner found, skipping: \n");
-        print_creal(input);
-        destory_creal(input, 0);
-        input = init_creal();
-        continue;
-      }
-
-      runner_count++;
-      if (execute_runner(input, failures, fail_count)) {
+    } else if (is_runner(trimmed)) {
+      int result = create_and_execute_runner(input, failures, fail_count, runner_count);
+      switch (result) {
+      case -1:
+        cleanup(input, NULL, failures, fail_count, file);
+        return EXIT_FAILURE;
+      case 1:
         fail_count++;
+      case 2:
+        runner_count++;
+        break;
       }
-      destory_creal(input, 0);
-      input = init_creal();
-      verbose_printf("---\n");
-      continue;
-    }
-    // Indicates flag
-    else if (copy[first_char] == '#') {
-      char *unparsed = str_tolower(&trimmed_buf[first_char + 1]);
-      int res = parse_flag(unparsed);
-      if (res == -1) {
-        if (flags & STRICT) {
-          print_c(RED, "did not find value/flag %s\n", unparsed);
-          cleanup(input, NULL, failures, fail_count, file);
-          return EXIT_FAILURE;
-        }
-        verbose_print_c(YELLOW, "flag '%s' does not exist.\n", unparsed);
-      }
-      continue;
-    }
-    // indicates action
-    else if (action_idx != -1) {
-      char *action = copy_sub_str(copy, ':');
-      const char *untrimmed = copy_sub_str_offset(copy, action_idx + 1);
+    } else if ((firstchar = is_flag(copy)) != -1) {
+      creal_str_t *unparsed_flag = from_str(&trimmed->str[firstchar + 1], 0);
+      int res = parse_flag(input, unparsed_flag->str);
+
+    } else if ((action_idx = is_action(copy)) != -1) {
+      char *action = copy_sub_str(copy->str, ':');
+      const char *untrimmed = copy_sub_str_offset(copy->str, action_idx + 1);
       size_t value_idx = first_non_empty_char(untrimmed);
       const char *trimmed_value = trim(copy_sub_str_offset(untrimmed, value_idx));
       Action act = parse_action(input, action, trimmed_value);
@@ -691,9 +681,9 @@ int read_testfile(const char *input_file, size_t *count)
         is_output = 1;
       }
     }
+    delete_str(copy);
+    delete_str(trimmed);
   }
-
-  // User puts --- at the end of file
   if (!validate_runner(input)) {
     free(input);
   }
@@ -820,6 +810,7 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
   const char *test_file = argv[1];
+  file_t *file_state = init_file_t();
   size_t runner_count = 0;
   int failed = read_testfile(test_file, &runner_count);
   debug_printf("exited creal successfully.\n");

@@ -16,9 +16,9 @@ size_t first_non_empty_char(const char *str)
   return i;
 }
 
-size_t index_of_char(const char *str, char c)
+int index_of_char(const char *str, char c)
 {
-  size_t i = -1;
+  int i = -1;
   char *ret = strchr(str, c);
   if (ret == NULL)
     return i;
@@ -26,22 +26,23 @@ size_t index_of_char(const char *str, char c)
   return i;
 }
 
-char *replace_sub_str(const char *original, size_t start, size_t end, const char *replacement)
+char *replace_sub_str(char *original, size_t start, size_t end, const char *replacement)
 {
-  size_t o_len = strlen(original) - 1;
-  size_t r_len = strlen(replacement) - 1;
-  size_t new_len = o_len - (end - start) + r_len;
+  int suffix_len = strlen(original) - end - 1;
+  int replacement_len = strlen(replacement);
 
-  char *new_str = malloc(sizeof(char) * new_len + 1);
-  if (new_str == NULL) {
-    return NULL;
+  int new_len = start + replacement_len + suffix_len + 1;
+
+  original = (char *)realloc(original, new_len * sizeof(char));
+  if (original == NULL) {
+    fprintf(stderr, "Could not allocate memory\n");
+    exit(EXIT_FAILURE);
   }
-  strncpy(new_str, original, start);
-  new_str[start] = '\0';  // ensure a valid c str
-  strcat(new_str, replacement);
-  strcat(new_str, original + end);
 
-  return new_str;
+  memmove(original + start + replacement_len, original + end + 1, suffix_len);
+  strncpy(original + start, replacement, replacement_len);
+  original[new_len - 1] = '\0';
+  return original;
 }
 
 char *copy_sub_str(const char *source, char delimiter)
@@ -164,4 +165,24 @@ int get_substr_index(const char *str, const char *sub_str)
     return result - str;
   }
   return -1;
+}
+
+char *get_first_word(const char *str)
+{
+  int str_len = strlen(str);
+  char *copy = (char *)malloc(str_len + 1);
+  strncpy(copy, str, str_len);
+  return strtok(copy, " ");
+}
+
+char *sub_str_s_e(const char *str, size_t start, size_t end)
+{
+  size_t new_len = end - start;
+  char *new_str = malloc(sizeof(char) * new_len + 1);
+  if (new_str == NULL) {
+    return NULL;
+  }
+  strncpy(new_str, str + start, new_len);
+  new_str[end] = '\0';  // ensure a valid c str
+  return new_str;
 }

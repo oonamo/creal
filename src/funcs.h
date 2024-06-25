@@ -24,4 +24,9 @@ char *str_toupper(char *str);
 int isnewline_or_space(char *str);
 
 int get_substr_index(const char *str, const char *sub_str);
+
+char *get_first_word(const char *str);
+char *sub_str_s_e(const char *str, size_t start, size_t end);
+
+char *trim(char *s);
 #endif

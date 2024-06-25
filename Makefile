@@ -14,10 +14,10 @@ release:
 	@ gcc ./src/creal.c -o creal -O3
 debug:
 	@ echo "<== GCC Debug"
-	@ gcc -g -fno-inline -fno-omit-frame-pointer -Og ./creal.c -o ./bin/creal
+	@ gcc -g -fno-inline -fno-omit-frame-pointer ./src/creal.c -o ./bin/creal
 clang_debug:
 	@ echo "<== Clang Debug"
-	@ clang ./src/creal.c -g -fsanitize=address -o ./bin/creal
+	@ clang -O1 -g -fsanitize=address -fno-omit-frame-pointer ./src/creal.c -o ./bin/creal
 	@ ./bin/creal $(test_file)
 run_tests: build
 	@ echo "<== Running Tests"
@@ -29,3 +29,8 @@ test_release: release
 	@ ./bin/creal $(test_file)
 install: release
 	@ $(install_cmd)
+gdb: debug
+	@ gdb --args ./bin/creal.exe ./tests/mocks/variables.creal
+run: build
+	@ echo "<== Running"
+	@ ./bin/creal $(test_file)

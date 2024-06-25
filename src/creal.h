@@ -3,15 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "creal_strings.h"
 #include "funcs.h"
-
-typedef struct {
-  int returncode;
-  size_t lines;
-  char *command;
-  char **output;
-  char *name;
-} Creal;
 
 typedef struct {
   char *name;
@@ -19,13 +12,28 @@ typedef struct {
 } f_vars_t;
 
 typedef struct {
-  uint32_t flags;
+  int allocated;
+  char delimter;
+  char surround[3];
+} creal_template_str_t;
+
+typedef struct {
   // Reserve variables[0] and variables[1] as comment_vars
   size_t varcount;
   f_vars_t *vars;
   char *l_comment_str;
   char *r_comment_str;
+  creal_template_str_t template_str;
 } file_t;
+
+typedef struct {
+  int returncode;
+  size_t lines;
+  char *command;
+  char **output;
+  char *name;
+  file_t *file_h;
+} Creal;
 
 #define MAX_VAR_LENGTH             25
 
@@ -40,7 +48,7 @@ void f_set_comment_str(file_t *File, const char *lhs, const char *rhs);
 void f_set_template_str(file_t *File, const char *delimiter, const char symbol);
 
 /* Templateing */
-char *replace_template_str(file_t *File, const char *variable);
+int replace_template_str(file_t *File, char *variable);
 
 /// To Add a new Flag follow these steps
 /// 1. Create a member with a similar name convention as below
@@ -85,7 +93,7 @@ typedef enum {
   INVALID_FLAG = (1 << 12),
 } Flags;
 
-#define FOR_ALL_FLAGS(i) for (int i = NONE; 1 << i < FLAG_SIZE; i++)
+#define FOR_ALL_FLAGS(i) for (int i = NONE; 1 << i <= FLAG_SIZE; i++)
 
 /// To Add a new Action follow these steps
 /// 1. Create a member with a similar name convention as below
@@ -131,12 +139,12 @@ void print_creal(Creal *creal);
 int read_testfile(const char *input_file, size_t *count);
 Action parse_action(Creal *input, const char *action, const char *value);
 int flag_is_true(const char *value, int fallback);
-int parse_flag(const char *unparsed_flag);
+int parse_flag(Creal *input, const char *unparsed_flag);
 void add_line(Creal *creal, const char *line);
 void comapre_creals(const Creal *actual, const Creal *expected);
 int execute_runner(Creal *runner, char **failures, size_t fail_count);
 int validate_runner(const Creal *creal);
-void remove_comment(char *line);
+// void remove_comment(char *line);
 void execute_command(Creal *ouput);
 void add_to_failure(char **failures, Creal *input, size_t fail_count);
 char *append_std_err_redir(char *cmd);
