@@ -95,6 +95,7 @@ int read_creal_file(const char *file)
     remove_comment(buf_cpy);
     print_str_debug(buf_cpy);
 
+    // idx will be the first index of '#'
     if ((idx = is_flag(buf_cpy)) != -1) {
       // check if flag has value
       if (parse_flag(input, buf_cpy, idx) == 1) {
@@ -102,7 +103,9 @@ int read_creal_file(const char *file)
                buf_cpy->str);
         exit(EXIT_FAILURE);
       }
+      // idx will be the first index of ':'
     } else if ((idx = is_action(buf_cpy)) != -1) {
+      parse_action(input, buf_cpy, idx);
     }
 
   clean:

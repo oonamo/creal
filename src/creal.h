@@ -100,8 +100,6 @@ typedef enum {
   MULTI_LINE_OUTPUT,
 } Action;
 
-#define FOR_ALL_ACTIONS(i) for (int i = COMMAND; i < ACTION_SIZE; i++)
-
 /* Creal management */
 Creal *init_creal();
 void destory_creal(Creal *creal, int can_destroy_self);
@@ -117,9 +115,7 @@ void print_creal(Creal *creal);
 
 /* Creal Interperter */
 int read_testfile(const char *input_file, size_t *count);
-Action parse_action(Creal *input, const creal_str_t *line, size_t action_idx);
 int flag_is_true(const char *value, int fallback);
-int parse_flag(Creal *input, const creal_str_t *line, int flag_start);
 void add_line(Creal *creal, const creal_str_t *line);
 void comapre_creals(const Creal *actual, const Creal *expected);
 int execute_runner(Creal *runner, char **failures, size_t fail_count);

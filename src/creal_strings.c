@@ -145,21 +145,13 @@ void c_trim(creal_str_t* str)
   // TODO: change all references to str->size to str->size + 1
   char* copy = malloc(str->size);
   strncpy(copy, str->str, str->size);
-  /*char* copy = strdup(str->str);*/
   copy[str->size - 1] = '\0';
   char* result = trim(copy);
   if (result[strlen(result)] != '\0') {
     fprintf(stderr, "last char is not null\n");
   }
-  /*printf("copying in function\n");*/
-  /*printf("result: %s\n", result);*/
   copy_str(str, result);
-  /*printf("copied in function\n");*/
   free(copy);
-  /*while (isspace((unsigned char)str->str[0]))*/
-  /*  memmove(str->str, str->str + 1, str->size - 1);*/
-  /*while (isspace((unsigned char)str->str[str->size - 2]))*/
-  /*  str->str[str->size - 1] = '\0';*/
 }
 
 int c_get_substr_index(const creal_str_t* str, const char* sub_str)

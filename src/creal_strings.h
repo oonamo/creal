@@ -18,7 +18,7 @@ typedef struct {
 creal_str_t* new_str();
 creal_str_t* from_str(char* str, int allocate);
 creal_str_t* allocate(size_t size);
-void delete_str(creal_str_t* str);
+void free_creal_str_t(creal_str_t* str);
 
 // chars
 int c_first_non_empty_char(const creal_str_t* str);

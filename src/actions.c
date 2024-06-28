@@ -1,9 +1,10 @@
 #include "actions.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "funcs.h"
+#include "creal_strings.h"
 
 void a_handle_command(Creal* input, char* cmd)
 {
@@ -35,23 +36,16 @@ const struct {
   { MULTI_LINE_OUTPUT, NULL },
 };
 
+#define FOR_ALL_ACTIONS(i) for (int i = act_map[0].act; act_map[i].act_str != NULL; i++)
+
 int is_in_output(creal_str_t* line)
 {
   // TODO: How can we compare using characters ?
-  /*if (strcmp(line->str, "|") == 0) {*/
-  /*  *isoutput ^= ~(*isoutput);*/
-  /*  return 1;*/
-  /*}*/
-  /*return 0;*/
   return strcmp(line->str, "|") != 0;
 }
 
 int is_runner(creal_str_t* line)
 {
-  /*if (strcmp(line->str, "---") == 0) {*/
-  /*  return 1;*/
-  /*}*/
-  /*return 0;*/
   return strcmp(line->str, "---") == 0;
 }
 
@@ -75,4 +69,28 @@ int is_action(creal_str_t* line)
 int is_multiline(creal_str_t* line)
 {
   return strcmp(line->str, "|") != 0;
+}
+
+Action parse_action(Creal* input, creal_str_t* line, int semicolon_idx)
+{
+  char* action = malloc(semicolon_idx + 1);
+  ASSERT_NOT_NULL(action);
+  strncpy(action, line->str, semicolon_idx);
+  action[semicolon_idx] = '\0';
+  Action c_action = INVALID_ACTION;
+
+  // HACK: using creal_str_t to dynamicallly create trimmed string
+  creal_str_t* value = from_str(line->str + semicolon_idx + 1, 1);
+  c_trim(value);
+
+  FOR_ALL_ACTIONS(i) {
+    if (strcmp(act_map[i].act_str, action) == 0) {
+      act_map[i].act_handler(input, value->str);
+      c_action = act_map[i].act;
+    }
+  }
+
+  free(action);
+  free_creal_str_t(value);
+  return c_action;
 }

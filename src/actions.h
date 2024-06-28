@@ -14,4 +14,5 @@ int is_runner(creal_str_t* line);
 int is_flag(creal_str_t* line);
 int is_action(creal_str_t* line);
 
+Action parse_action(Creal* input, creal_str_t* line, int semi_colon_idx);
 #endif
