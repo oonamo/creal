@@ -3,13 +3,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "creal_file.h"
 #include "creal_strings.h"
 #include "funcs.h"
-
-typedef struct {
-  char *name;
-  char *value;
-} f_vars_t;
 
 typedef struct {
   int allocated;
@@ -18,13 +14,9 @@ typedef struct {
 } creal_template_str_t;
 
 typedef struct {
-  // Reserve variables[0] and variables[1] as comment_vars
-  size_t varcount;
-  f_vars_t *vars;
-  char *l_comment_str;
-  char *r_comment_str;
-  creal_template_str_t template_str;
-} file_t;
+  size_t fail_count;
+  char **failures;
+} creal_runner_fail_t;
 
 typedef struct {
   int returncode;
@@ -34,18 +26,6 @@ typedef struct {
   char *name;
   file_t *file_h;
 } Creal;
-
-#define MAX_VAR_LENGTH             25
-
-#define FOR_ALL_VARIABLES(i, File) for (size_t i = 0; i < File->varcount; i++)
-file_t *init_file_t();
-void destroy_file_t(file_t *file);
-
-/* Global Settings */
-void f_add_var_to_file(file_t *File, char *variable, char *value);
-int f_var_is_unique(file_t *File, const char *name);
-void f_set_comment_str(file_t *File, const char *lhs, const char *rhs);
-void f_set_template_str(file_t *File, const char *delimiter, const char symbol);
 
 /* Templateing */
 int replace_template_str(file_t *File, char *variable);
@@ -137,10 +117,10 @@ void print_creal(Creal *creal);
 
 /* Creal Interperter */
 int read_testfile(const char *input_file, size_t *count);
-Action parse_action(Creal *input, const char *action, const char *value);
+Action parse_action(Creal *input, const creal_str_t *line, size_t action_idx);
 int flag_is_true(const char *value, int fallback);
-int parse_flag(Creal *input, const char *unparsed_flag);
-void add_line(Creal *creal, const char *line);
+int parse_flag(Creal *input, const creal_str_t *line, int flag_start);
+void add_line(Creal *creal, const creal_str_t *line);
 void comapre_creals(const Creal *actual, const Creal *expected);
 int execute_runner(Creal *runner, char **failures, size_t fail_count);
 int validate_runner(const Creal *creal);
@@ -150,5 +130,7 @@ void add_to_failure(char **failures, Creal *input, size_t fail_count);
 char *append_std_err_redir(char *cmd);
 char *prepend_shell(char *cmd, const char *prep);
 void print_diff(const Creal *expected, const Creal *actual, size_t start_of_diff);
+
+void remove_comment(creal_str_t *line);
 
 #endif

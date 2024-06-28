@@ -7,234 +7,8 @@
 
 #include "actions.c"
 #include "creal_strings.c"
+#include "flags.c"
 #include "funcs.c"
-
-#define DEFAULT_FLAGS (TRIM_COMMAND_OUTPUT | COMPARE_OUTPUTS)
-
-static uint32_t flags = DEFAULT_FLAGS;
-
-static const struct {
-  Flags flag;
-  char *flag_str;
-} flag_map[] = {
-  { NONE, "none" },
-  { STRICT, "strict" },
-  { FAIL_UNEXPECTED_NEWLINES, "fail_on_unexpected_newline" },
-  { TRIM_COMMAND_OUTPUT, "trim_command_output" },
-  { VERBOSE, "verbose" },
-  { COLOR_OFF, "color_off" },
-  { DEBUG, "debug" },
-  { APPEND_RELATIVE, "append_relative" },
-  { ALWAYS_SHOW_OUTPUT, "always_show_output" },
-  { SET_COMMENT_STRING, "set_comment_string" },
-  { COMPARE_OUTPUTS, "compare_outputs" },
-  { SETVAR, "set" },
-  { FLAG_SIZE, NULL },
-  { INVALID_FLAG, NULL },
-};
-
-/// Prints colored output to console.
-void print_c(COLOR c, const char *fmt, ...)
-{
-  if (flags & COLOR_OFF) {
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-    return;
-  }
-
-  va_list args;
-  char mod_fmt[2000];
-
-  snprintf(mod_fmt, sizeof(mod_fmt), "\x1b[%dm%s\x1b[%dm", c, fmt, CLEAR);
-
-  va_start(args, fmt);
-  vfprintf(stdout, mod_fmt, args);
-  va_end(args);
-}
-
-void verbose_printf(const char *fmt, ...)
-{
-  if (flags & VERBOSE) {
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-  }
-}
-
-void verbose_print_c(COLOR c, const char *fmt, ...)
-{
-  if (flags & VERBOSE) {
-    if (flags & COLOR_OFF) {
-      va_list args;
-      va_start(args, fmt);
-      vprintf(fmt, args);
-      va_end(args);
-      return;
-    }
-    va_list args;
-    char mod_fmt[2000];
-
-    snprintf(mod_fmt, sizeof(mod_fmt), "\x1b[%dm%s\x1b[%dm", c, fmt, CLEAR);
-
-    va_start(args, fmt);
-    vfprintf(stdout, mod_fmt, args);
-    va_end(args);
-  }
-}
-
-void debug_print_c(COLOR c, const char *fmt, ...)
-{
-  if (flags & DEBUG) {
-    if (flags & COLOR_OFF) {
-      va_list args;
-      va_start(args, fmt);
-      vprintf(fmt, args);
-      va_end(args);
-      return;
-    }
-    va_list args;
-    char mod_fmt[2000];
-
-    snprintf(mod_fmt, sizeof(mod_fmt), "\x1b[%dm%s\x1b[%dm", c, fmt, CLEAR);
-
-    va_start(args, fmt);
-    vfprintf(stdout, mod_fmt, args);
-    va_end(args);
-  }
-}
-
-void debug_printf(const char *fmt, ...)
-{
-  if (flags & DEBUG) {
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-  }
-}
-
-int f_var_is_unique(file_t *File, const char *name)
-{
-  FOR_ALL_VARIABLES(i, File) {
-    if (strcmp(File->vars[i].name, name) == 0) {
-      return i;
-    }
-  }
-  return -1;
-}
-
-file_t *init_file_t()
-{
-  file_t *File = malloc(sizeof(file_t));
-  File->vars = malloc(sizeof(f_vars_t));
-  File->l_comment_str = malloc(strlen(COMMENT_STR_LEFT) + 1);
-  File->r_comment_str = malloc(strlen(COMMENT_STR_RIGHT) + 1);
-  strcpy(File->l_comment_str, COMMENT_STR_LEFT);
-  strcpy(File->r_comment_str, COMMENT_STR_RIGHT);
-  File->varcount = 0;
-  File->template_str.delimter = '$';
-  strcpy(File->template_str.surround, "{}");
-  return File;
-}
-
-void destroy_file_t(file_t *file)
-{
-  free(file->r_comment_str);
-  free(file->l_comment_str);
-  FOR_ALL_VARIABLES(i, file) {
-    free(file->vars[i].name);
-    free(file->vars[i].value);
-  }
-  free(file->vars);
-  free(file);
-}
-
-void f_set_template_str(file_t *File, const char *delimiter, const char symbol);
-
-void f_add_var_to_file(file_t *File, char *variable, char *value)
-{
-  // increase size by 1
-  int var_idx = f_var_is_unique(File, variable);
-  if (var_idx < 0) {
-    var_idx = File->varcount;
-    File->vars = realloc(File->vars, (var_idx + 1) * sizeof(f_vars_t));
-    if (File->vars == NULL) {
-      fprintf(stderr, "failed to allocate memory for variable");
-      exit(1);
-    }
-  } else {
-    free(File->vars[var_idx].name);
-    free(File->vars[var_idx].value);
-  }
-
-  File->vars[var_idx].name = malloc(strlen(variable) + 1);
-  File->vars[var_idx].value = malloc(strlen(value) + 1);
-
-  // [name_of_var=value]
-  strcpy(File->vars[var_idx].name, variable);
-  strcpy(File->vars[var_idx].value, value);
-  File->varcount++;
-}
-
-void f_set_comment_str(file_t *File, const char *lhs, const char *rhs)
-{
-  File->l_comment_str = realloc(File->l_comment_str, strlen(lhs) + 1);
-  if (File->l_comment_str == NULL) {
-    fprintf(stderr, "failed to allocate memory for variable");
-    exit(1);
-  }
-  File->r_comment_str = realloc(File->r_comment_str, strlen(rhs) + 1);
-  if (File->r_comment_str == NULL) {
-    fprintf(stderr, "failed to allocate memory for variable");
-    exit(1);
-  }
-
-  strcpy(File->l_comment_str, lhs);
-  strcpy(File->r_comment_str, rhs);
-}
-
-int replace_template_str(file_t *file, char *str)
-{
-  int ds = index_of_char(str, '$');
-  if (ds == -1) {
-    return 0;
-  }
-  int lb = index_of_char(str, '{');
-  if (lb == -1) {
-    return 0;
-  }
-  int rb = index_of_char(str, '}');
-
-  if (lb - 1 != ds || rb >= lb) {
-    return 0;
-  }
-  char *substr = sub_str_s_e(str, ds, rb);
-  FOR_ALL_VARIABLES(i, file) {
-    if (strcmp(substr, file->vars[i].name) == 0) {
-      replace_sub_str(str, ds, rb, file->vars[i].value);
-    }
-  }
-}
-
-/// Checks if comment contains both COMMENT_STR_LEFT and COMMENT_STR_RIGHT
-/// if so, removes everything from the beginning of COMMENT_STR_LEFT to the
-/// right
-/*void remove_comment(char *line)*/
-/*{*/
-/*  int lhs = get_substr_index(line, COMMENT_STR_LEFT);*/
-/*  int rhs = get_substr_index(line, COMMENT_STR_RIGHT);*/
-/*  if (lhs != -1 && rhs != -1) {*/
-/*    // HACK: avoid strncpy param overlap*/
-/*    char *copy = strdup(line);*/
-/*    line = realloc(line, lhs + 1);*/
-/*    // assume that size is sufficient*/
-/*    strncpy(line, copy, lhs);*/
-/*    line[lhs] = '\0';*/
-/*  }*/
-/*}*/
 
 Creal *init_creal()
 {
@@ -252,572 +26,94 @@ Creal *init_creal()
   return c;
 }
 
-void destory_creal(Creal *creal, int can_destroy_self)
+void remove_comment(creal_str_t *line)
 {
-  if (creal == NULL) {
-    return;
-  }
-  if (creal->output != NULL) {
-    for (size_t i = 0; i < creal->lines; i++) {
-      if (creal->output[i] != NULL) {
-        free(creal->output[i]);
-      }
+  int start, end;
+  if ((start = c_get_substr_index(line, "[[!")) != -1
+      && (end = c_get_substr_index(line, "!]]")) != -1) {
+    if (start >= end) {
+      return;
     }
-    free(creal->output);
-  }
-  if (creal->name != NULL) {
-    free(creal->name);
-  }
-  if (can_destroy_self) {
-    destroy_file_t(creal->file_h);
-    free(creal);
+    /*printf("found comment\n");*/
+    copy_till(line, start);
+    c_trim(line);
   }
 }
 
-int flag_is_true(const char *value, int fallback)
+void add_line(Creal *input, const creal_str_t *line)
 {
-  char *bool = str_tolower((char *)value);
-  if (strcmp(value, "false") == 0) {
-    return 0;
-  } else if (strcmp(value, "true") == 0 || strcmp(value, value) == 0
-             || isnewline_or_space((char *)value)) {
-    return 1;
-  } else
-    return fallback;
+  input->output = realloc(input->output, (input->lines + 1) * sizeof(char *));
+  ASSERT_NOT_NULL(input->output);
+
+  input->output[input->lines] = malloc(line->size);
+  ASSERT_NOT_NULL(input->output[input->lines]);
+
+  strcpy(input->output[input->lines], line->str);
+  input->output[input->lines][line->size - 1] = '\0';
+
+  input->lines++;
 }
 
-// TODO: Add Creal input
-int parse_flag(Creal *input, const char *unparsed_flag)
+// 1. Check if it is in multiline output, as it escapes everything.
+// 2. Check if the line is a flag
+// 3. Check if the line is an action
+// 4. Check if the line is the end of a runner
+// 5. Check if the line is an action
+int read_creal_file(const char *file)
 {
-  size_t eq_idx = index_of_char(unparsed_flag, '=');
-  int space_idx = index_of_char(unparsed_flag, ' ');
-  char *flag;
-  char *value = copy_sub_str_offset(unparsed_flag, eq_idx + 1);
-  int flag_on = flag_is_true(value, -1);
-  char *name;
-  flag = copy_sub_str(unparsed_flag, ' ');
-  if (space_idx != -1 && strcmp(flag, "set") == 0) {
-    name = sub_str_s_e(unparsed_flag, space_idx + 1, eq_idx);
-    f_add_var_to_file(input->file_h, name, value);
-    return 1;
-  } else {
-    flag = copy_sub_str(unparsed_flag, '=');
-  }
-  Flags e_flag = INVALID_FLAG;
-  debug_printf("flag: %s, value: %s\n", flag, value);
-
-  FOR_ALL_FLAGS(i) {
-    if (strcmp(flag, flag_map[i].flag_str) == 0) {
-      e_flag = flag_map[i].flag;
-      break;
-    }
-  }
-
-  if (e_flag == INVALID_FLAG) {
-    debug_print_c(RED, "found no valid flag for value '%s'\n", flag);
-    return -1;
-  } else if (e_flag == SETVAR) {
-    /*f_add_var_to_file(file_t *File, char *variable, char *value);*/
-  } else if (e_flag == NONE) {
-    flags = DEFAULT_FLAGS;
-  }
-
-  if (flag_on == 1) {
-    flags |= e_flag;
-    debug_print_c(CYAN, "enabling...\n");
-  } else if (flag_on == 0) {
-    flags &= ~(e_flag);
-    debug_print_c(CYAN, "disabling...\n");
-  } else {
-    if (flags & STRICT) {
-      return -1;
-    }
-  }
-  return e_flag == INVALID_FLAG ? -1 : 0;
-}
-
-Action parse_action(Creal *input, const char *action, const char *value)
-{
-  Action creal_act = INVALID_ACTION;
-  if (strcmp(action, "output") == 0) {
-    if (strcmp(value, "|") == 0) {
-      creal_act = MULTI_LINE_OUTPUT;
-    } else {
-      creal_act = SINGLE_LINE_OUTPUT;
-      add_line(input, value);
-    }
-    return creal_act;
-  }
-  FOR_ALL_ACTIONS(i) {
-    // avoids *unintentional* access to protected Actions
-    if (strcmp(action, act_map[i].act_str) == 0) {
-      creal_act = i;
-      if (act_map[i].act_handler != NULL) {
-        act_map[i].act_handler(input, (char *)value);
-      } else {
-        creal_act = INVALID_ACTION;
-      }
-      break;
-    }
-  }
-  return creal_act;
-}
-
-void add_line(Creal *creal, const char *line)
-{
-  // increase size by 1
-  creal->output = realloc(creal->output, (creal->lines + 1) * sizeof(char *));
-  if (creal->output == NULL) {
-    fprintf(stderr, "Failed to allocate memory in output\n");
-    exit(1);
-  }
-  if (flags & TRIM_COMMAND_OUTPUT) {
-    char *trimmed_line = trim(strdup(line));
-    creal->output[creal->lines] = malloc(strlen(trimmed_line) + 1);
-    strcpy(creal->output[creal->lines], trimmed_line);
-  } else {
-    creal->output[creal->lines] = malloc(strlen(line) + 1);
-    strcpy(creal->output[creal->lines], line);
-  }
-  if (creal->output[creal->lines] == NULL) {
-    fprintf(stderr, "Failed to allocate memory in lines\n");
-    exit(1);
-  }
-  creal->lines++;
-}
-
-void print_flags()
-{
-  if (flags & VERBOSE) {
-    FOR_ALL_FLAGS(i) {
-      if (flags & flag_map[i].flag) {
-        print_c(CYAN, "\t%s\n", flag_map[i].flag_str);
-      }
-    }
-    printf("\n");
-  }
-}
-
-/// prints diff of expected vs actual
-/// Most of the times, the number of lines will differ
-/// We first print normally until we reach before the diff
-/// Once we reach the diff point, we print
-void print_diff(const Creal *expected, const Creal *actual, size_t start_of_diff)
-{
-  size_t line = 0;
-  print_c(BLUE, "Printing Diff:\n");
-  int exp_done = 0, act_done = 0;
-  while (!exp_done || !act_done) {
-    if (line < start_of_diff) {
-      if (line < expected->lines) {
-        printf("%s\n", expected->output[line]);
-      } else if (line < actual->lines) {
-        printf("%s\n", actual->output[line]);
-      } else {
-        exp_done = 1;
-        act_done = 1;
-        break;
-      }
-      line++;
-      continue;
-    } else {
-      if (line < expected->lines) {
-        print_c(RED, "%zu: ", line + 1);
-        printf("%s\n", expected->output[line]);
-      }
-      if (line < actual->lines) {
-        print_c(GREEN, "%zu: ", line + 1);
-        printf("%s\n", actual->output[line]);
-      }
-    }
-    if (line > expected->lines && line > actual->lines)
-      break;
-    line++;
-  }
-  printf("\n");
-}
-
-void print_output(const Creal *expected, const Creal *actual)
-{
-  if (flags & ALWAYS_SHOW_OUTPUT) {
-    print_c(BLUE, "Expected:\n");
-    for (size_t i = 0; i < expected->lines; i++) {
-      printf("%s\n", expected->output[i]);
-    }
-    print_c(BLUE, "Actual:\n");
-    for (size_t i = 0; i < actual->lines; i++) {
-      printf("%s\n", actual->output[i]);
-    }
-  }
-}
-
-int compare_creals(const Creal *expected, const Creal *actual)
-{
-  int failed = 0;
-  verbose_print_c(YELLOW, "testing command '%s'\n", expected->command);
-  verbose_print_c(YELLOW, "testing runner '%s'\n", expected->name);
-  print_flags();
-  size_t num_lines = expected->lines;
-  if (flags & COMPARE_OUTPUTS) {
-    if (actual->lines != expected->lines) {
-      if (flags & STRICT) {
-        print_c(RED, "The output contains diffrent number of lines than "
-                     "what was expected:\n");
-        print_c(RED, "Expected %zu lines. Found %zu lines.\n", expected->lines, actual->lines);
-        failed |= 1;
-      } else {
-        verbose_print_c(YELLOW, "The output contains diffrent number of lines than "
-                                "what was expected:\n");
-        verbose_print_c(YELLOW, "Expected %zu lines. Found %zu lines.\n", expected->lines,
-                        actual->lines);
-      }
-      verbose_print_c(YELLOW, "This may result in a pass or failed test, "
-                              "which may depend on the active flags\n");
-      num_lines = actual->lines > expected->lines ? actual->lines : expected->lines;
-    }
-    for (size_t i = 0; i < num_lines; i++) {
-      if (i >= actual->lines || i >= expected->lines) {
-        print_diff(expected, actual, i);
-        failed |= 1;
-        break;
-      } else if (strcmp(actual->output[i], expected->output[i]) != 0) {
-        // print diff
-        if (flags & TRIM_COMMAND_OUTPUT) {
-          if (strcmp(trim(actual->output[i]), trim(expected->output[i])) != 0) {
-            size_t act_len = strlen(actual->output[i]);
-            size_t exp_len = strlen(expected->output[i]);
-            print_diff(expected, actual, i);
-            failed |= 1;
-            break;
-          } else {
-            verbose_print_c(YELLOW, "Found an extra new line or space. Ignoring due "
-                                    "to 'fail_on_unexpected_newline' flag being "
-                                    "active");
-          }
-        }
-      }
-    }
-  }
-  if (actual->returncode != expected->returncode) {
-    print_c(RED, "return codes are diffrent\n");
-    print_c(RED, "expected:\n");
-    printf("\t%d\n", expected->returncode);
-    printf("actual:\n");
-    printf("\t%d\n", actual->returncode);
-    failed |= 1;
-  }
-  if (failed == 1) {
-    print_c(RED, "'%s' failed.\n", expected->name);
-  } else {
-    print_c(GREEN, "'%s' passed.\n", expected->name);
-  }
-  print_output(expected, actual);
-  return failed;
-}
-
-int execute_runner(Creal *runner, char **failures, size_t fail_count)
-{
-  Creal *actual = init_creal();
-  actual->command = malloc(strlen(runner->command) + 1);
-  strcpy(actual->command, runner->command);
-  execute_command(actual);
-  int res = compare_creals(runner, actual);
-  destory_creal(actual, 1);
-  if (res) {
-    add_to_failure(failures, runner, fail_count);
-  }
-  return res;
-}
-
-void add_to_failure(char **failures, Creal *runner, size_t fail_count)
-{
-  failures = realloc(failures, (fail_count + 1) * sizeof(char *));
-  if (failures == NULL) {
-    print_c(RED, "failed to allocate memory for failues\n");
-    exit(EXIT_FAILURE);
-  }
-  failures[fail_count] = malloc(strlen(runner->name) + 1);
-  strcpy(failures[fail_count], runner->name);
-}
-
-int validate_runner(const Creal *creal)
-{
-  int ok = 0;
-  ok |= creal->command != NULL;
-  if (flags & STRICT) {
-    ok |= creal->output != NULL;
-  }
-  return ok;
-}
-
-void cleanup(Creal *creal, file_t *file, char **failures, size_t failcount, FILE *fp)
-{
-  if (creal != NULL) {
-    destory_creal(creal, 1);
-  }
-  if (file != NULL) {
-    destroy_file_t(file);
-  }
-  if (failures != NULL) {
-    for (size_t i = 0; i < failcount; i++) {
-      free(failures[i]);
-    }
-    free(failures);
-  }
-  if (fp != NULL) {
-    fclose(fp);
-  }
-}
-int create_and_execute_runner(Creal *input, char **failures, size_t failure_count,
-                              size_t runner_count)
-{
-  int res = 0;
-  if (input->name == NULL) {
-    input->name = malloc(sizeof(char) * num_digits(runner_count) + 1);
-    sprintf(input->name, "%zu", runner_count);
-  }
-  if (!validate_runner(input)) {
-    if (flags & STRICT) {
-      print_c(RED, "Bad runner. Make sure to fill all fields or "
-                   "disable strict mode\n");
-      return -1;
-    }
-    print_c(RED, "Bad runner found, skipping: \n");
-    print_creal(input);
-    destory_creal(input, 0);
-    input = init_creal();
-  }
-  res = 2;
-  if (execute_runner(input, failures, failure_count)) {
-    res = 1;
-  }
-  destory_creal(input, 0);
-  input = init_creal();
-  verbose_printf("---\n");
-  return res;
-}
-
-/// read line by line
-/// Priority List:
-/// 1. multiline stdout: Everything is stored into array. No other process is
-/// ran until the multiline stdout is done. Delimited with 'stdout: |". To end,
-/// add '|' to a line with nothing else
-/// 2. Flags: Delimited with '#'s
-/// 3. Runner Seperators: seperated with '---'
-/// 3. Actions
-int read_testfile(const char *input_file, size_t *count)
-{
-  // get flags
-  char buffer[1024];
-  FILE *file;
-  Creal *input = init_creal();
+  FILE *fp = NULL;
 #ifdef _WIN32
-  fopen_s(&file, input_file, "r");
+  fopen_s(&fp, file, "r");
 #else
-  file = fopen(input_file, "r");
+  file = fopen(file, "r");
 #endif
-
   if (file == NULL) {
-    cleanup(input, NULL, NULL, 0, file);
+    fprintf(stderr, "error, could not open file");
     return EXIT_FAILURE;
   }
 
-  int is_output = 0;
-  size_t runner_count = 0;
-  size_t fail_count = 0;
-  char **failures = NULL;
+  Creal *input = init_creal();
+  int is_output;
+  char buffer[1024];
 
-  verbose_printf("---\n");
-  while (fgets(buffer, sizeof(buffer), file) != NULL) {
-    creal_str_t *copy = from_str(buffer, 0);
-    remove_comment(copy);
-    creal_str_t *trimmed = new_str();
-    copy_str(trimmed, trim(copy->str));
-    printf("copy: \n");
-    print_str_debug(copy);
-    printf("trimmed: \n");
-    print_str_debug(trimmed);
-    int firstchar = -1;
-    int action_idx = -1;
-
-    if (is_output) {
-      if (is_in_output(trimmed)) {
-        add_line(input, buffer);
-      } else {
-        is_output = 0;
-      }
-    } else if (is_runner(trimmed)) {
-      int result = create_and_execute_runner(input, failures, fail_count, runner_count);
-      switch (result) {
-      case -1:
-        cleanup(input, NULL, failures, fail_count, file);
-        return EXIT_FAILURE;
-      case 1:
-        fail_count++;
-      case 2:
-        runner_count++;
-        break;
-      }
-    } else if ((firstchar = is_flag(copy)) != -1) {
-      creal_str_t *unparsed_flag = from_str(&trimmed->str[firstchar + 1], 0);
-      int res = parse_flag(input, unparsed_flag->str);
-
-    } else if ((action_idx = is_action(copy)) != -1) {
-      char *action = copy_sub_str(copy->str, ':');
-      const char *untrimmed = copy_sub_str_offset(copy->str, action_idx + 1);
-      size_t value_idx = first_non_empty_char(untrimmed);
-      const char *trimmed_value = trim(copy_sub_str_offset(untrimmed, value_idx));
-      Action act = parse_action(input, action, trimmed_value);
-
-      if (act == INVALID_ACTION) {
-        if (flags & STRICT) {
-          print_c(RED, "invalid action: '%s'. Fatal\n", action);
-          cleanup(input, NULL, failures, fail_count, file);
-          return EXIT_FAILURE;
-        }
-        print_c(YELLOW, "invalid action: '%s'. Continuing...\n", action);
-      }
-      if (act == MULTI_LINE_OUTPUT) {
-        is_output = 1;
-      }
-    }
-    delete_str(copy);
-    delete_str(trimmed);
-  }
-  if (!validate_runner(input)) {
-    free(input);
-  }
-  // User removes --- at the end of file
-  else {
-    if (flags & STRICT) {
-      print_c(RED, "found runner at the end of file, but it is never "
-                   "terminated.\n");
-      cleanup(input, NULL, failures, fail_count, file);
-      return EXIT_FAILURE;
-    }
-    if (input->name == NULL) {
-      input->name = malloc(sizeof(char) * num_digits(runner_count));
-      sprintf(input->name, "%zu", runner_count);
-    }
-    runner_count++;
-    if (execute_runner(input, failures, runner_count)) {
-      fail_count++;
-    }
-
-    destory_creal(input, 1);
-
-    verbose_printf("---\n");
-    if (fail_count) {
-      print_c(RED, "failed runner: \n");
-      for (size_t i = 0; i < fail_count; i++) {
-        print_c(RED, "\t%s\n", failures[i]);
-        free(failures[i]);
-      }
-      free(failures);
-    }
-  }
-  fclose(file);
-  *count = runner_count;
-  return fail_count != 0;
-}
-
-char *append_std_err_redir(char *cmd)
-{
-  size_t len = strlen(cmd);
-  if (len < 4) {
-    cmd = realloc(cmd, strlen(cmd) + strlen(" 2>&1") + 1);
-    strcat(cmd, " 2>&1");
-    if (cmd == NULL) {
-      exit(EXIT_FAILURE);
-    }
-    return cmd;
-  }
-  const char *str = copy_sub_str_offset(cmd, len - 4);
-  if (strcmp(str, "2>&1") != 0) {
-    cmd = realloc(cmd, strlen(cmd) + strlen(" 2>&1") + 1);
-    if (cmd == NULL) {
-      exit(EXIT_FAILURE);
-    }
-    strcat(cmd, " 2>&1");
-    return cmd;
-  }
-  return cmd;
-}
-
-char *prepend_shell(char *cmd, const char *prep)
-{
-  size_t len_pre = strlen(prep);
-  size_t len_cmd = strlen(cmd);
-  char *result = malloc(len_cmd + len_pre + 1);
-  if (result != NULL) {
-    memmove(result + len_pre, cmd, len_cmd + 1);
-    memcpy(result, prep, len_pre);
-  }
-  return result;
-}
-
-void execute_command(Creal *creal)
-{
-  FILE *fp;
-  char buffer[1000];
-  size_t line = 0;
-  char *command = malloc(strlen(creal->command) + 1);
-  strcpy(command, creal->command);
-  char *appended = append_std_err_redir(command);
-#ifdef _WIN32
-  char *cmd = prepend_shell(appended, "cmd /c ");
-  fp = _popen(cmd, "r");
-#else
-  fp = popen(creal->command, "r");
-#endif
-  if (fp == NULL) {
-    fprintf(stderr, "failed to run command %s\n", creal->command);
-    exit(EXIT_FAILURE);
-  }
-
-  // read line_wise
   while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-    add_line(creal, buffer);
+    creal_str_t *buf_cpy = from_str(buffer, 1);
+    c_trim(buf_cpy);
+
+    // escapes everyting
+    if (is_output) {
+      // If exiting multiline output
+      if (is_multiline(buf_cpy)) {
+        is_output = 0;
+      } else {
+        add_line(input, buf_cpy);
+      }
+      goto clean;
+    }
+
+    int idx;
+    remove_comment(buf_cpy);
+    print_str_debug(buf_cpy);
+
+    if ((idx = is_flag(buf_cpy)) != -1) {
+      // check if flag has value
+      if (parse_flag(input, buf_cpy, idx) == 1) {
+        printf("error: %s is not a valid line. The flag or value in the line is not valid.\n",
+               buf_cpy->str);
+        exit(EXIT_FAILURE);
+      }
+    } else if ((idx = is_action(buf_cpy)) != -1) {
+    }
+
+  clean:
+    free_creal_str_t(buf_cpy);
+    continue;
   }
 
-#ifdef _WIN32
-  creal->returncode = _pclose(fp);
-#else
-  creal->returncode = pclose(fp) / 256;
-#endif
-  return;
-}
-
-void print_creal(Creal *creal)
-{
-  if (creal->command)
-    printf("command: %s\n", creal->command);
-  if (creal->returncode)
-    printf("returncode: %d\n", creal->returncode);
-  if (creal->lines)
-    printf("lines: %zu\n", creal->lines);
-  if (creal->name)
-    printf("name: %s\n", creal->name);
-  for (size_t i = 0; i < creal->lines; i++)
-    printf("%s\n", creal->output[i]);
-  printf("\n");
+  return 0;
 }
 
 int main(int argc, char *argv[])
 {
-  if (argc < 2) {
-    printf("USAGE: creal <file>\n");
-    exit(EXIT_FAILURE);
-  }
-  const char *test_file = argv[1];
-  file_t *file_state = init_file_t();
-  size_t runner_count = 0;
-  int failed = read_testfile(test_file, &runner_count);
-  debug_printf("exited creal successfully.\n");
-  if (failed) {
-    verbose_print_c(RED, "failed\n");
-    exit(EXIT_FAILURE);
-  }
-  verbose_print_c(GREEN, "passed\n");
-  exit(EXIT_SUCCESS);
+  int result = read_creal_file(argv[1]);
 }

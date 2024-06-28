@@ -1,5 +1,6 @@
 #include "creal_strings.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -8,10 +9,13 @@
 static const char* COMMENT_STR_LEFT = "[[!";
 static const char* COMMENT_STR_RIGHT = "!]]";
 
+// TODO: setting size to include the nullbyte character is very confusing. This should be changed to
+// reflect what is given by strlen
+
 void print_str_debug(creal_str_t* str)
 {
   if (str != NULL) {
-    printf("str: %s, size: %zu, allocated: %d\n", str->str, str->size, str->allocated);
+    /*printf("str: %s, size: %zu, allocated: %d\n", str->str, str->size, str->allocated);*/
   }
 }
 
@@ -20,6 +24,8 @@ creal_str_t* new_str()
   /*creal_str_t new = { .str = NULL, .size = 0, .allocated = 0 };*/
   /*return new;*/
   creal_str_t* new = malloc(sizeof(creal_str_t));
+  ASSERT_NOT_NULL(new);
+
   new->str = NULL;
   new->size = 0;
   new->allocated = 0;
@@ -28,10 +34,12 @@ creal_str_t* new_str()
 
 creal_str_t* from_str(char* str, int allocate)
 {
+  ASSERT_NOT_NULL(str);
   size_t len = strlen(str) + 1;
   creal_str_t* new = new_str();
   if (allocate) {
     new->str = malloc(len);
+    ASSERT_NOT_NULL(new->str);
     new->allocated = 1;
     strncpy(new->str, str, len);
   } else {
@@ -50,15 +58,18 @@ void copy_str(creal_str_t* dest, char* source)
     dest->allocated = 1;
   }
   if (dest->allocated && dest->size != len) {
+    /*free(dest->str);*/
+    /*dest->str = malloc(len);*/
     dest->str = realloc(dest->str, len);
+    /*printf("reallocating memory\n");*/
     if (dest->str == NULL) {
       fprintf(stderr, "Failed to allocate memory for a string");
       exit(EXIT_FAILURE);
     }
   }
   dest->size = len;
-  strcpy(dest->str, source);
-  dest->str[len] = '\0';
+  strncpy(dest->str, source, dest->size);
+  dest->str[len - 1] = '\0';
 }
 
 creal_str_t* allocate(size_t size)
@@ -74,10 +85,9 @@ creal_str_t* allocate(size_t size)
   return new;
 }
 
-void delete_str(creal_str_t* str)
+void free_creal_str_t(creal_str_t* str)
 {
   if (str->allocated) {
-    printf("freeing\n");
     free(str->str);
   }
   free(str);
@@ -129,29 +139,89 @@ creal_str_t* c_isnewline_or_space(creal_str_t* str);
 
 creal_str_t* c_ltrim(creal_str_t* str);
 creal_str_t* c_rtrim(creal_str_t* str);
-creal_str_t* c_trim(creal_str_t* str)
-{
-  return from_str(trim(str->str), 1);
-}
 
-void remove_comment(creal_str_t* str)
+void c_trim(creal_str_t* str)
 {
-  int lhs = get_substr_index(str->str, COMMENT_STR_LEFT);
-  int rhs = get_substr_index(str->str, COMMENT_STR_RIGHT);
-  if (lhs != -1 && rhs != -1) {
-    // FIXME: Is their a more efficent way to do this?
-    char* copy = strdup(str->str);
-    if (str->allocated) {
-      str->str = realloc(str->str, lhs);
-    } else {
-      str->str = malloc(lhs);
-    }
-    str->allocated = 1;
-    strncpy(str->str, copy, lhs);
-    str->str[lhs] = '\0';
-    str->size = lhs;
+  // TODO: change all references to str->size to str->size + 1
+  char* copy = malloc(str->size);
+  strncpy(copy, str->str, str->size);
+  /*char* copy = strdup(str->str);*/
+  copy[str->size - 1] = '\0';
+  char* result = trim(copy);
+  if (result[strlen(result)] != '\0') {
+    fprintf(stderr, "last char is not null\n");
   }
+  /*printf("copying in function\n");*/
+  /*printf("result: %s\n", result);*/
+  copy_str(str, result);
+  /*printf("copied in function\n");*/
+  free(copy);
+  /*while (isspace((unsigned char)str->str[0]))*/
+  /*  memmove(str->str, str->str + 1, str->size - 1);*/
+  /*while (isspace((unsigned char)str->str[str->size - 2]))*/
+  /*  str->str[str->size - 1] = '\0';*/
 }
 
-int c_get_substr_index(const creal_str_t* str, const creal_str_t* sub_str);
+int c_get_substr_index(const creal_str_t* str, const char* sub_str)
+{
+  if (str->str == NULL)
+    return -1;
+  char* result = strstr(str->str, sub_str);
+  int position = result - str->str;
+  return position;
+}
+
 int c_substr_n(const creal_str_t* str, size_t start, size_t end);
+creal_str_t* c_copy_till(const creal_str_t* str, size_t idx)
+{
+  if (str->size - 1 < idx) {
+    return NULL;
+  }
+  creal_str_t* new = allocate(idx);
+  strncpy(new->str, str->str, new->size);
+  new->str[new->size - 1] = '\0';
+  return new;
+}
+
+void copy_till(creal_str_t* str, size_t idx)
+{
+  if (str->size - 1 < idx) {
+    // TODO: Runtime error
+    return;
+  }
+  char* copy = malloc(idx + 1);
+  ASSERT_NOT_NULL(copy);
+  strncpy(copy, str->str, idx);
+  // copy[idx + 1] = '\0';  // <--- buffer overflow
+  copy[idx] = '\0';
+
+  if (!str->allocated) {
+    str->str = malloc(idx + 1);
+  } else {
+    str->str = realloc(str->str, idx + 1);
+  }
+  ASSERT_NOT_NULL(str->str);
+  copy_str(str, copy);
+}
+creal_str_t* c_copy_till_char(const creal_str_t* str, char l);
+
+creal_str_t* c_copy_after(const creal_str_t* str, size_t idx)
+{
+  if (str->size < idx) {
+    return NULL;
+  }
+  creal_str_t* new = allocate(str->size - idx);
+  strncpy(new->str, str->str + idx, new->size);
+  new->str[new->size - 1] = '\0';
+  return new;
+}
+
+creal_str_t* c_copy_from(const creal_str_t* str, size_t start, size_t len)
+{
+  if (str->size < len) {
+    return NULL;
+  }
+  creal_str_t* new = allocate(len);
+  strncpy(new->str, str->str + start, new->size);
+  return new;
+}

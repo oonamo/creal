@@ -59,7 +59,7 @@ int is_flag(creal_str_t* line)
 {
   int idx = c_first_non_empty_char(line);
   if (idx == -1)
-    return idx;
+    return -1;
   if (line->str[idx] == '#') {
     return idx;
   }
@@ -70,4 +70,9 @@ int is_action(creal_str_t* line)
 {
   int idx = c_index_of_char(line, ':');
   return idx;
+}
+
+int is_multiline(creal_str_t* line)
+{
+  return strcmp(line->str, "|") != 0;
 }
