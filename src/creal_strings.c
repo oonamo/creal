@@ -1,6 +1,5 @@
 #include "creal_strings.h"
 
-#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -15,7 +14,7 @@ static const char* COMMENT_STR_RIGHT = "!]]";
 void print_str_debug(creal_str_t* str)
 {
   if (str != NULL) {
-    /*printf("str: %s, size: %zu, allocated: %d\n", str->str, str->size, str->allocated);*/
+    printf("str: %s, size: %zu, allocated: %d\n", str->str, str->size, str->allocated);
   }
 }
 
@@ -25,7 +24,6 @@ creal_str_t* new_str()
   /*return new;*/
   creal_str_t* new = malloc(sizeof(creal_str_t));
   ASSERT_NOT_NULL(new);
-
   new->str = NULL;
   new->size = 0;
   new->allocated = 0;
@@ -42,6 +40,7 @@ creal_str_t* from_str(char* str, int allocate)
     ASSERT_NOT_NULL(new->str);
     new->allocated = 1;
     strncpy(new->str, str, len);
+    new->str[len - 1] = '\0';
   } else {
     new->str = str;
   }
@@ -87,7 +86,7 @@ creal_str_t* allocate(size_t size)
 
 void free_creal_str_t(creal_str_t* str)
 {
-  if (str->allocated) {
+  if (str->allocated && str->str != NULL) {
     free(str->str);
   }
   free(str);

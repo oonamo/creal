@@ -21,9 +21,33 @@ Creal *init_creal()
   c->returncode = 0;
   c->output = NULL;
   c->command = NULL;
-  c->name = NULL;
+  c->name = new_str();
   c->file_h = init_file_t();
   return c;
+}
+
+void free_creal(Creal *creal, int can_destroy_self)
+{
+  if (creal == NULL) {
+    return;
+  }
+  if (creal->output != NULL) {
+    for (size_t i = 0; i < creal->lines; i++) {
+      if (creal->output[i] != NULL) {
+        free(creal->output[i]);
+      }
+    }
+    free(creal->output);
+  }
+  if (creal->name != NULL) {
+    /*free(creal->name);*/
+    free_creal_str_t(creal->name);
+  }
+  if (can_destroy_self) {
+    /*free(creal->file_h);*/
+    free_file_t(creal->file_h);
+    free(creal);
+  }
 }
 
 void remove_comment(creal_str_t *line)
@@ -105,11 +129,21 @@ int read_creal_file(const char *file)
       }
       // idx will be the first index of ':'
     } else if ((idx = is_action(buf_cpy)) != -1) {
-      parse_action(input, buf_cpy, idx);
+      Action act = parse_action(input, buf_cpy, idx);
+      if (act == MULTI_LINE_OUTPUT) {
+        is_output = 1;
+      } else if (act == SINGLE_LINE_OUTPUT) {
+        add_line(input, buf_cpy);
+      }
+    } else if (is_runner(buf_cpy)) {
     }
 
   clean:
     free_creal_str_t(buf_cpy);
+    free_creal(input, 0);
+
+    // HACK: Free, then create new object
+    input = init_creal();
     continue;
   }
 

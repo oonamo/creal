@@ -6,6 +6,7 @@
 #define ASSERT_NOT_NULL(str) \
   if (str == NULL) { \
     fprintf(stderr, "failed to allocate string\n"); \
+    exit(EXIT_FAILURE); \
   }
 
 typedef struct {
@@ -33,6 +34,8 @@ creal_str_t* c_isnewline_or_space(creal_str_t* str);
 creal_str_t* c_copy_till(const creal_str_t* str, size_t idx);
 creal_str_t* c_copy_till_char(const creal_str_t* str, char l);
 char* c_str_has(const creal_str_t* str, const char* sub_str);
+
+void copy_str(creal_str_t* dest, char* source);
 
 creal_str_t* c_ltrim(creal_str_t* str);
 creal_str_t* c_rtrim(creal_str_t* str);

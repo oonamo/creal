@@ -23,7 +23,7 @@ typedef struct {
   size_t lines;
   char *command;
   char **output;
-  char *name;
+  creal_str_t *name;
   file_t *file_h;
 } Creal;
 
@@ -102,7 +102,7 @@ typedef enum {
 
 /* Creal management */
 Creal *init_creal();
-void destory_creal(Creal *creal, int can_destroy_self);
+void free_creal(Creal *creal, int can_destroy_self);
 
 /* User Interface */
 void print_c(COLOR c, const char *fmt, ...);
